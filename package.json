@@ -1,0 +1,274 @@
+{
+  "name": "tab-tree",
+  "displayName": "Tab Tree",
+  "description": "View your open editor tabs as a nested file tree",
+  "version": "0.0.1",
+  "publisher": "surranov",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/surranov/tab-tree"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "tabs",
+    "tree",
+    "open editors",
+    "file tree",
+    "nested",
+    "explorer"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "tabTree",
+          "name": "Tab Tree"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "tabTree.collapseAll",
+        "title": "Collapse All",
+        "icon": "$(collapse-all)"
+      },
+      {
+        "command": "tabTree.expandAll",
+        "title": "Expand All",
+        "icon": "$(expand-all)"
+      },
+      {
+        "command": "tabTree.closeAll",
+        "title": "Close All Tabs",
+        "icon": "$(close-all)"
+      },
+      {
+        "command": "tabTree.toggleFollowActiveFile",
+        "title": "Toggle Follow Active File",
+        "icon": "$(target)"
+      },
+      {
+        "command": "tabTree.toggleShowPreviewTabs",
+        "title": "Toggle Show Preview Tabs",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "tabTree.closeTab",
+        "title": "Close",
+        "icon": "$(close)"
+      },
+      {
+        "command": "tabTree.closeFolderTabs",
+        "title": "Close All in Folder",
+        "icon": "$(close)"
+      },
+      {
+        "command": "tabTree.openToSide",
+        "title": "Open to the Side"
+      },
+      {
+        "command": "tabTree.openWith",
+        "title": "Open With..."
+      },
+      {
+        "command": "tabTree.copyPath",
+        "title": "Copy Path"
+      },
+      {
+        "command": "tabTree.copyRelativePath",
+        "title": "Copy Relative Path"
+      },
+      {
+        "command": "tabTree.revealInOS",
+        "title": "Reveal in Finder"
+      },
+      {
+        "command": "tabTree.revealInExplorer",
+        "title": "Reveal in Explorer"
+      },
+      {
+        "command": "tabTree.selectForCompare",
+        "title": "Select for Compare"
+      },
+      {
+        "command": "tabTree.compareWithSelected",
+        "title": "Compare with Selected"
+      },
+      {
+        "command": "tabTree.rename",
+        "title": "Rename..."
+      },
+      {
+        "command": "tabTree.delete",
+        "title": "Delete"
+      },
+      {
+        "command": "tabTree.newFile",
+        "title": "New File..."
+      },
+      {
+        "command": "tabTree.newFolder",
+        "title": "New Folder..."
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "tabTree.toggleFollowActiveFile",
+          "when": "view == tabTree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tabTree.toggleShowPreviewTabs",
+          "when": "view == tabTree",
+          "group": "navigation@2"
+        },
+        {
+          "command": "tabTree.expandAll",
+          "when": "view == tabTree",
+          "group": "navigation@3"
+        },
+        {
+          "command": "tabTree.closeAll",
+          "when": "view == tabTree",
+          "group": "navigation@4"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "tabTree.closeTab",
+          "when": "view == tabTree && viewItem == file",
+          "group": "inline@1"
+        },
+        {
+          "command": "tabTree.closeFolderTabs",
+          "when": "view == tabTree && viewItem == folder",
+          "group": "inline@1"
+        },
+        {
+          "command": "tabTree.openToSide",
+          "when": "view == tabTree && viewItem == file",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tabTree.openWith",
+          "when": "view == tabTree && viewItem == file",
+          "group": "navigation@2"
+        },
+        {
+          "command": "tabTree.selectForCompare",
+          "when": "view == tabTree && viewItem == file",
+          "group": "3_compare@1"
+        },
+        {
+          "command": "tabTree.compareWithSelected",
+          "when": "view == tabTree && viewItem == file",
+          "group": "3_compare@2"
+        },
+        {
+          "command": "tabTree.copyPath",
+          "when": "view == tabTree && viewItem =~ /^(file|folder)$/",
+          "group": "6_copypath@1"
+        },
+        {
+          "command": "tabTree.copyRelativePath",
+          "when": "view == tabTree && viewItem =~ /^(file|folder)$/",
+          "group": "6_copypath@2"
+        },
+        {
+          "command": "tabTree.revealInOS",
+          "when": "view == tabTree && viewItem =~ /^(file|folder)$/",
+          "group": "6_copypath@3"
+        },
+        {
+          "command": "tabTree.revealInExplorer",
+          "when": "view == tabTree && viewItem == file",
+          "group": "6_copypath@4"
+        },
+        {
+          "command": "tabTree.newFile",
+          "when": "view == tabTree && viewItem == folder",
+          "group": "7_modification@1"
+        },
+        {
+          "command": "tabTree.newFolder",
+          "when": "view == tabTree && viewItem == folder",
+          "group": "7_modification@2"
+        },
+        {
+          "command": "tabTree.rename",
+          "when": "view == tabTree && viewItem == file",
+          "group": "7_modification@3"
+        },
+        {
+          "command": "tabTree.delete",
+          "when": "view == tabTree && viewItem =~ /^(file|folder)$/",
+          "group": "7_modification@4"
+        },
+        {
+          "command": "tabTree.closeTab",
+          "when": "view == tabTree && viewItem == file",
+          "group": "8_close@1"
+        },
+        {
+          "command": "tabTree.closeFolderTabs",
+          "when": "view == tabTree && viewItem == folder",
+          "group": "8_close@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Tab Tree",
+      "properties": {
+        "tabTree.followActiveFile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically reveal and select the active editor in the tree"
+        },
+        "tabTree.showPreviewTabs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show preview (temporary) tabs in the tree"
+        },
+        "tabTree.showNonFileTabs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show non-file tabs (Settings, Webviews, etc.) in the tree"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "build:prod": "node esbuild.js --production",
+    "watch": "node esbuild.js --watch",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:integration": "node ./test/integration/runTests.js",
+    "test": "npm run test:unit && npm run test:integration",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint && npm run test:unit",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.4.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.24.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^2.0.0"
+  }
+}
