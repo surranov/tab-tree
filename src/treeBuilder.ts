@@ -12,8 +12,7 @@ import {
 } from './types';
 
 export function buildTree(_input: IBuildTreeInput): ITreeNode[] {
-    // TODO: Phase 1 — TDD implementation
-    // Tests will be written first, then this function implemented.
+    // Phase 1 — TDD
     return [];
 }
 
