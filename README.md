@@ -5,9 +5,9 @@
 
 # Tab Tree
 
-[![Version](https://img.shields.io/visual-studio-marketplace/v/surranov.tab-tree?style=flat-square&label=Version)](https://marketplace.visualstudio.com/items?itemName=surranov.tab-tree)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/surranov.tab-tree?style=flat-square&label=Installs)](https://marketplace.visualstudio.com/items?itemName=surranov.tab-tree)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/surranov.tab-tree?style=flat-square&label=Rating)](https://marketplace.visualstudio.com/items?itemName=surranov.tab-tree)
+[![Version](https://vsmarketplacebadges.dev/version-short/surranov.tab-tree.svg)](https://marketplace.visualstudio.com/items?itemName=surranov.tab-tree)
+[![Installs](https://vsmarketplacebadges.dev/installs-short/surranov.tab-tree.svg)](https://marketplace.visualstudio.com/items?itemName=surranov.tab-tree)
+[![Rating](https://vsmarketplacebadges.dev/rating-short/surranov.tab-tree.svg)](https://marketplace.visualstudio.com/items?itemName=surranov.tab-tree)
 
 **Your open editor tabs, organized as a file tree.**
 
