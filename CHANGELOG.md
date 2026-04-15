@@ -7,6 +7,12 @@ All notable changes to Tab Tree will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.4] - 2026-04-16
+
+### Added
+
+- README note establishing Tab Tree as a full rewrite of the now-deprecated Nested Open Editors extension by the same author — builds trust for new users.
+
 ## [0.0.3] - 2026-04-16
 
 ### Added

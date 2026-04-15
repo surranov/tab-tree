@@ -13,6 +13,8 @@
 
 </div>
 
+> **Note:** Tab Tree is a full rewrite of my earlier extension [Nested Open Editors](https://marketplace.visualstudio.com/items?itemName=surranov.nested-open-editors) (now deprecated) — same author, rebuilt from scratch.
+
 <p align="center">
   <img src="images/screenshot.png" alt="Tab Tree in action — split editor groups, nested file tree, context menu" width="600" />
 </p>
