@@ -2,7 +2,7 @@
   "name": "tab-tree",
   "displayName": "Tab Tree",
   "description": "View your open editor tabs as a nested file tree",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "surranov",
   "license": "GPL-3.0-only",
   "repository": {
@@ -10,7 +10,7 @@
     "url": "https://github.com/surranov/tab-tree"
   },
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.116.0"
   },
   "categories": [
     "Other"
