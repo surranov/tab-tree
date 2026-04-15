@@ -19,7 +19,7 @@
 | Architecture | done |
 | Implementation | done |
 | Testing | done (unit + integration) |
-| Release | in progress |
+| Release | done (v0.0.4 live on Marketplace) |
 
 ---
 
