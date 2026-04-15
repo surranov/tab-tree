@@ -19,8 +19,6 @@
   <img src="images/screenshot.png" alt="Tab Tree in action — split editor groups, nested file tree, context menu" width="600" />
 </p>
 
-Tab Tree is a VS Code extension that displays open tabs as a nested folder structure in the Explorer sidebar. Instead of a flat tab bar where `index.ts` appears five times, you see a proper tree with full paths — like your file system, but only showing what's actually open.
-
 ## Why
 
 VS Code's built-in "Open Editors" is a flat list. Once you have 10+ tabs, finding the right one means scanning labels and hoping file names are unique. Tab Tree brings the familiar folder hierarchy to your open tabs — the same mental model you already use in the file explorer.

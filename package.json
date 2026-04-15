@@ -2,7 +2,7 @@
   "name": "tab-tree",
   "displayName": "Tab Tree",
   "description": "View your open editor tabs as a nested file tree",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "publisher": "surranov",
   "license": "GPL-3.0-only",
   "repository": {
