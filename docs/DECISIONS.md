@@ -1,175 +1,273 @@
-# Decision Log — Nested Open Editors v2
+# Decision Log — Tab Tree
 
-> Каждое решение фиксируется здесь с обоснованием. Формат: дата, ID, решение, альтернативы, почему так.
-> ID решения совпадает с OQ-* из SPEC.md, если решение закрывает открытый вопрос.
+> Every decision is recorded here with reasoning. Format: date, ID, decision, alternatives, rationale.
+> Decision IDs match OQ-* from SPEC.md when a decision closes an open question.
 
 ---
 
-## D-001: Подход к реализации — TreeDataProvider
+## D-001: Implementation approach — TreeDataProvider
 
-**Дата:** 2026-04-14
-**Закрывает:** —
+**Date:** 2026-04-14
+**Closes:** —
 
-**Решение:** кастомный `TreeDataProvider` в sidebar — единственный жизнеспособный подход.
+**Decision:** Custom `TreeDataProvider` in sidebar — the only viable approach.
 
-**Отвергнутые альтернативы:**
+**Rejected alternatives:**
 
-| Альтернатива | Почему не подходит |
+| Alternative | Why it doesn't work |
 |---|---|
-| Подмена data source нативного Explorer | Нет публичного API. Explorer завязан на ~15 internal сервисов VS Code |
-| Fork Explorer из исходников VS Code | Explorer не самостоятельный модуль — зависит от `IExplorerService`, `IInstantiationService`, `IContextKeyService` и др. Невозможно извлечь без переписывания половины VS Code. Ломался бы с каждым обновлением |
-| `FileSystemProvider` (virtual FS in native Explorer) | Слишком сложно, не даёт нужного контроля над деревом, проблемы с контекстным меню |
-| WebviewView (HTML-based tree) | Нет нативных file icons, нет git decorations, нет keyboard nav, accessibility, плохая интеграция. Больше работы, хуже результат |
+| Override native Explorer data source | No public API. Explorer depends on ~15 internal VS Code services |
+| Fork Explorer from VS Code source | Explorer is not a standalone module — depends on `IExplorerService`, `IInstantiationService`, `IContextKeyService`, etc. Impossible to extract without rewriting half of VS Code. Would break with every update |
+| `FileSystemProvider` (virtual FS in native Explorer) | Too complex, insufficient tree control, context menu issues |
+| WebviewView (HTML-based tree) | No native file icons, no git decorations, no keyboard nav, no accessibility, poor integration. More work, worse result |
 
-**Обоснование:** TreeDataProvider даёт:
-- Нативные file icons через `resourceUri` — бесплатно
-- Git decorations через `resourceUri` — бесплатно
-- Нативную keyboard navigation и accessibility
-- Контекстное меню через `view/item/context`
-- D&D через `TreeDragAndDropController`
-- `TreeView.reveal()` для follow-active-file
-
----
-
-## D-002: API для отслеживания табов — tabGroups
-
-**Дата:** 2026-04-14
-**Закрывает:** —
-
-**Решение:** `window.tabGroups` API + `onDidChangeTabs` / `onDidChangeTabGroups`
-
-**Отвергнутая альтернатива:** `onDidOpenTextDocument` / `onDidCloseTextDocument` — ненадёжно: document может быть открыт без видимого таба (background load), и не закрыт при закрытии таба.
-
-**Gotcha:** debounce обязателен (50-100ms) — события могут приходить по 2-3 штуки на одно действие (by design, issue #146786).
+**Rationale:** TreeDataProvider provides:
+- Native file icons via `resourceUri` — free
+- Git decorations via `resourceUri` — free
+- Native keyboard navigation and accessibility
+- Context menu via `view/item/context`
+- D&D via `TreeDragAndDropController`
+- `TreeView.reveal()` for follow-active-file
 
 ---
 
-## D-003: Rename/Delete — своя реализация
+## D-002: Tab tracking API — tabGroups
 
-**Дата:** 2026-04-14
-**Закрывает:** —
+**Date:** 2026-04-14
+**Closes:** —
 
-**Решение:** реализуем Rename и Delete самостоятельно через `workspace.fs` API.
+**Decision:** `window.tabGroups` API + `onDidChangeTabs` / `onDidChangeTabGroups`
 
-**Причина:** встроенные команды `renameFile`, `moveFileToTrash`, `deleteFile` не принимают URI аргумент — завязаны на internal `explorerService.getContext()`. Проверено по исходникам VS Code.
+**Rejected alternative:** `onDidOpenTextDocument` / `onDidCloseTextDocument` — unreliable: a document can be opened without a visible tab (background load) and not closed when the tab is closed.
 
-**Реализация:**
-- Rename: `window.showInputBox({ value: currentName })` → `workspace.fs.rename(oldUri, newUri)`
-- Delete: `window.showWarningMessage('Delete?', 'Move to Trash', 'Delete Permanently')` → `workspace.fs.delete(uri, { useTrash })` или `workspace.fs.delete(uri, { recursive })`
+**Gotcha:** Debounce is mandatory (50-100ms) — events can fire 2-3 times per single action (by design, issue #146786).
 
 ---
 
-## D-004: New File / New Folder — своя реализация
+## D-003: Rename/Delete — custom implementation
 
-**Дата:** 2026-04-14
-**Закрывает:** —
+**Date:** 2026-04-14
+**Closes:** —
 
-**Решение:** аналогично D-003 — `showInputBox` + `workspace.fs.writeFile` / `workspace.fs.createDirectory`.
+**Decision:** Implement Rename and Delete ourselves via `workspace.fs` API.
 
-**Причина:** `explorer.newFile` и `explorer.newFolder` используют `openExplorerAndCreate()` — internal function, зависящая от текущего выделения в нативном Explorer.
+**Reason:** Built-in commands `renameFile`, `moveFileToTrash`, `deleteFile` don't accept a URI argument — they depend on internal `explorerService.getContext()`. Verified in VS Code source.
 
----
-
-## D-005: Tab Groups — секции по группам
-
-**Дата:** 2026-04-14
-**Закрывает:** OQ-1
-
-**Решение:** дерево разбивается на секции по editor groups. Каждая группа — root-узел ("Group 1", "Group 2", ...), внутри — своё поддерево папок и файлов. Файл, открытый в двух группах, отображается в обеих.
-
-**Отвергнутая альтернатива:** одно общее дерево (ближе к JetBrains, но теряется информация о том, в какой группе файл).
+**Implementation:**
+- Rename: `window.showInputBox({ value: currentName })` → `WorkspaceEdit.renameFile` + `workspace.applyEdit` (→ D-016)
+- Move: `showOpenDialog` → `WorkspaceEdit.renameFile` + `workspace.applyEdit` (→ D-016)
+- Delete: `window.showWarningMessage('Delete?', 'Move to Trash', 'Delete Permanently')` → `workspace.fs.delete(uri, { useTrash })` or `workspace.fs.delete(uri, { recursive })`
 
 ---
 
-## D-006: Compact folders — нет
+## D-004: New File / New Folder — custom implementation
 
-**Дата:** 2026-04-14
-**Закрывает:** OQ-2
+**Date:** 2026-04-14
+**Closes:** —
 
-**Решение:** всегда полная вложенность. Каждая папка — отдельный узел. Compact folders не реализуем.
+**Decision:** Same as D-003 — `showInputBox` + `workspace.fs.writeFile` / `workspace.fs.createDirectory`.
 
----
-
-## D-007: Расположение view — Explorer sidebar
-
-**Дата:** 2026-04-14
-**Закрывает:** OQ-8
-
-**Решение:** view размещается в Explorer sidebar (`viewsContainers.explorer`). Пользователь может перетащить в другое место вручную (стандартная возможность VS Code).
+**Reason:** `explorer.newFile` and `explorer.newFolder` use `openExplorerAndCreate()` — internal function dependent on current selection in native Explorer.
 
 ---
 
-## D-008: Сортировка — алфавитная
+## D-005: Tab Groups — sections per group
 
-**Дата:** 2026-04-14
-**Закрывает:** OQ-3
+**Date:** 2026-04-14
+**Closes:** OQ-1
 
-**Решение:** алфавитная сортировка, папки сверху — как в нативном Explorer.
+**Decision:** Tree is split into sections by editor groups. Each group is a root node ("Group 1", "Group 2", ...), with its own subtree of folders and files. A file open in two groups appears in both.
 
----
-
-## D-009: Терминалы — не показывать
-
-**Дата:** 2026-04-14
-**Закрывает:** OQ-7
-
-**Решение:** `TabInputTerminal` пропускается. Терминалы не относятся к файловому дереву.
+**Rejected alternative:** Single shared tree (closer to JetBrains, but loses information about which group a file belongs to).
 
 ---
 
-## D-010: Diff editors — показывать modified
+## D-006: Compact folders — no
 
-**Дата:** 2026-04-14
-**Закрывает:** OQ-5
+**Date:** 2026-04-14
+**Closes:** OQ-2
 
-**Решение:** `TabInputTextDiff` — в дереве показывается `modified` URI. Original игнорируется. Логика: modified — тот файл, который редактируется.
-
----
-
-## D-011: Pinned tabs — визуальная индикация
-
-**Дата:** 2026-04-14
-**Закрывает:** OQ-6
-
-**Решение:** pinned табы получают визуальный индикатор (badge или decoration). `tab.isPinned` доступен через API.
+**Decision:** Always full nesting. Each folder is a separate node. Compact folders not implemented.
 
 ---
 
-## D-012: Multi-root workspaces — поддерживаем сразу
+## D-007: View placement — Explorer sidebar
 
-**Дата:** 2026-04-14
-**Закрывает:** OQ-4
+**Date:** 2026-04-14
+**Closes:** OQ-8
 
-**Решение:** поддержка multi-root с первой версии. Каждый workspace folder — отдельный корневой узел в дереве. Файлы из каждого folder группируются под своим root.
-
----
-
-## D-013: Название — Tab Tree
-
-**Дата:** 2026-04-14
-
-**Решение:** extension name: `tab-tree`, display name: `Tab Tree`.
-
-**Отвергнутые альтернативы:** Canopy (красиво, но не мгновенно понятно), TreeTabs (менее броское), Arbor (абстрактно).
-
-**Обоснование:** максимальная ясность + searchability. "Tabs as a tree" — сразу понятно, легко вспомнить через год.
+**Decision:** View is placed in Explorer sidebar (`viewsContainers.explorer`). User can drag it elsewhere manually (standard VS Code capability).
 
 ---
 
-## Все решения — сводка
+## D-008: Sorting — alphabetical
 
-| ID | Вопрос | Решение |
+**Date:** 2026-04-14
+**Closes:** OQ-3
+
+**Decision:** Alphabetical sorting, folders on top — same as native Explorer.
+
+---
+
+## D-009: Terminals — don't show
+
+**Date:** 2026-04-14
+**Closes:** OQ-7
+
+**Decision:** `TabInputTerminal` is skipped. Terminals don't belong in the file tree.
+
+---
+
+## D-010: Diff editors — show modified
+
+**Date:** 2026-04-14
+**Closes:** OQ-5
+
+**Decision:** `TabInputTextDiff` — tree shows the `modified` URI. Original is ignored. Rationale: modified is the file being edited.
+
+---
+
+## D-011: Pinned tabs — visual indicator
+
+**Date:** 2026-04-14
+**Closes:** OQ-6
+
+**Decision:** Pinned tabs get a visual indicator (badge or decoration). `tab.isPinned` is available via API.
+
+---
+
+## D-012: Multi-root workspaces — supported from day one
+
+**Date:** 2026-04-14
+**Closes:** OQ-4
+
+**Decision:** Multi-root support from v1. Each workspace folder is a separate root node in the tree. Files from each folder are grouped under their root.
+
+---
+
+## D-013: Name — Tab Tree
+
+**Date:** 2026-04-14
+
+**Decision:** Extension name: `tab-tree`, display name: `Tab Tree`.
+
+**Rejected alternatives:** Canopy (beautiful but not instantly clear), TreeTabs (less catchy), Arbor (abstract).
+
+**Rationale:** Maximum clarity + searchability. "Tabs as a tree" — immediately understandable, easy to recall after a year.
+
+---
+
+## D-014: Drag between tab groups — move, not copy
+
+**Date:** 2026-04-14 (revised 2026-04-15)
+
+**Decision:** Dragging a file from the tree to another editor group moves it (closes in the source group). Implemented **synchronously inside `handleDrop`**: `handleDrag` stores source paths + groupIndex in a private map, `handleDrop` opens each file in the target group via `vscode.open`, then looks up the source tab in `tabGroups.all` by path and closes it. No event subscriptions, no pending state, no timeouts.
+
+**Rejected alternative 1:** Keep native VS Code behavior (copy). Inconvenient — user must manually close the source tab after each drag.
+
+**Rejected alternative 2 (original implementation):** Observer pattern via `onDidChangeTabs`: store pending drag sources, react to `opened` events, close source with a 3s cleanup timeout. Rejected on revision — too much moving state (class-level pending map, timeout handle, disposables, race conditions if drop cancelled or tabs fire during drag). Synchronous lookup in `tabGroups.all` after `await vscode.open` is simpler and equally reliable because the tab state is already updated by the time the promise resolves.
+
+**Edge cases:**
+
+- Drop in same group → no-op (`sourceGroupIndex === targetGroupIndex` skip)
+- Drop on empty folder / undefined target → target resolves to `activeTabGroup.viewColumn`
+- Drop cancelled → `handleDrop` never fires; next successful drop clears stale `dragSources` at start
+- File open in multiple groups → `dragSources` map keys by path with the originating groupIndex, only that group's tab is closed
+- Folder drag → `collectDragSources` walks children recursively
+- Source tab not found (closed externally during drag) → graceful no-op
+
+---
+
+## D-015: DnD testing — unit tests on controller methods only
+
+**Date:** 2026-04-14
+
+**Decision:** DnD is tested exclusively via direct `handleDrag`/`handleDrop` calls + simulated `onDidChangeTabs` in unit tests. E2E DnD testing is not feasible.
+
+**Approaches investigated:**
+
+| Approach | Works | Why |
+|---|---|---|
+| vscode-extension-tester (Selenium) | No | Selenium `dragAndDrop` on Electron is unreliable — `dragstart`/`drop` events don't fire via synthetic mouse events. [webdriverio#6596](https://github.com/webdriverio/webdriverio/issues/6596) |
+| Playwright + Electron | No | VS Code as Playwright target is not implemented. [playwright#22351](https://github.com/microsoft/playwright/issues/22351), status P3 |
+| VS Code API programmatic trigger | No | No public API for programmatic drag on TreeView. DnD goes through internal IPC Extension Host ↔ renderer |
+| Direct handleDrag/handleDrop calls | **Yes** | Controller methods are regular public methods, called directly. Covers business logic completely |
+
+**Re-check on updates:** Playwright issue #22351 (VS Code as target), vscode-extension-tester DnD support.
+
+---
+
+## D-016: Rename/Move — WorkspaceEdit.renameFile instead of workspace.fs.rename
+
+**Date:** 2026-04-14
+
+**Decision:** `tabTree.rename` and `tabTree.move` use `WorkspaceEdit.renameFile()` + `workspace.applyEdit()` instead of `workspace.fs.rename()`.
+
+**Reason:** `workspace.fs.rename()` is a direct FS operation, doesn't trigger `onWillRenameFiles`. Language servers (TypeScript LSP, etc.) don't learn about the rename → imports are not updated.
+
+| Mechanism | File renamed | `onWillRenameFiles` | Import update |
+|---|---|---|---|
+| `workspace.fs.rename()` | yes | **no** | **no** |
+| `WorkspaceEdit.renameFile()` + `applyEdit` | yes | **yes** | **yes** |
+
+**Sources:** [vscode#113925](https://github.com/microsoft/vscode/issues/113925), [vscode#43768](https://github.com/microsoft/vscode/issues/43768), [VS Code API docs](https://code.visualstudio.com/api/references/vscode-api) — `onWillRenameFiles` fires only for `workspace.applyEdit`.
+
+**Code:**
+```typescript
+const edit = new vscode.WorkspaceEdit();
+edit.renameFile(oldUri, newUri);
+await vscode.workspace.applyEdit(edit);
+```
+
+---
+
+## D-017: Non-file tab focus — focusNthEditorGroup + openEditorAtIndex
+
+**Date:** 2026-04-15
+
+**Decision:** Clicking a non-file tab node (Settings, Welcome, webview, etc.) in the tree focuses it via two internal commands: `workbench.action.focusNthEditorGroup` (to activate the correct group) + `workbench.action.openEditorAtIndex` (0-based, to activate the tab within that group).
+
+**Why not `vscode.open`:** `vscode.open` requires a file URI. Non-file tabs (Settings, Welcome, webviews) don't have one.
+
+**Why not label-to-command mapping:** Would require maintaining a map of known tab labels to their opening commands. Labels can be localized. The index approach is universal — works for any tab type without special-casing.
+
+**Risk:** `openEditorAtIndex` is not in the public API documentation but exists in VS Code source (`editorCommands.ts`). It operates on internal `EditorInput` via `editorService.openEditor()`, not `showTextDocument`, so it handles all editor types. Tab index may become stale between tree rebuild and click, but the 80ms debounce minimizes this window.
+
+**Sources:** Issue [#55205](https://github.com/microsoft/vscode/issues/55205), PR [#56441](https://github.com/microsoft/vscode/pull/56441), VS Code `editorCommands.ts`.
+
+---
+
+## D-018: Non-file tab close — findVscodeTab fallback by label + group
+
+**Date:** 2026-04-15
+
+**Decision:** `findVscodeTab()` first tries to match by `fsPath` (for file-based tabs). If no match is found, falls back to matching by `tab.label === filePath && group.viewColumn === groupIndex` (for webview / unknown tabs where `filePath` stores the label).
+
+**Why:** Non-file tabs (`TabInputWebview`, `undefined` input) don't have a file URI. The existing `fsPath` matching never finds them. Label + group matching is the only viable strategy since `tabGroups.close()` requires the actual `Tab` object.
+
+**Edge case:** Duplicate labels in the same group (two extension webviews with the same title) could match the wrong tab. This is rare enough to accept.
+
+---
+
+## All decisions — summary
+
+| ID | Question | Decision |
 | --- | --- | --- |
-| D-001 | Подход | TreeDataProvider |
+| D-001 | Approach | TreeDataProvider |
 | D-002 | Tab tracking | tabGroups API |
-| D-003 | Rename/Delete | Своя реализация через workspace.fs |
-| D-004 | New File/Folder | Своя реализация через workspace.fs |
-| D-005 | Tab Groups | Секции по группам |
-| D-006 | Compact folders | Нет, полная вложенность |
-| D-007 | Расположение | Explorer sidebar |
-| D-008 | Сортировка | Алфавитная, папки сверху |
-| D-009 | Терминалы | Не показывать |
-| D-010 | Diff editors | Показывать modified |
-| D-011 | Pinned tabs | Визуальная индикация |
-| D-012 | Multi-root | Поддерживаем сразу |
-| D-013 | Название | Tab Tree |
+| D-003 | Rename/Delete | Custom implementation via workspace.fs |
+| D-004 | New File/Folder | Custom implementation via workspace.fs |
+| D-005 | Tab Groups | Sections per group |
+| D-006 | Compact folders | No, full nesting |
+| D-007 | Placement | Explorer sidebar |
+| D-008 | Sorting | Alphabetical, folders on top |
+| D-009 | Terminals | Don't show |
+| D-010 | Diff editors | Show modified |
+| D-011 | Pinned tabs | Visual indicator |
+| D-012 | Multi-root | Supported from day one |
+| D-013 | Name | Tab Tree |
+| D-014 | DnD between groups | Move (not copy) |
+| D-015 | DnD testing | Unit tests on controller methods only |
+| D-016 | Rename/Move API | WorkspaceEdit.renameFile (not workspace.fs.rename) |
+| D-017 | Non-file tab focus | focusNthEditorGroup + openEditorAtIndex |
+| D-018 | Non-file tab close | findVscodeTab fallback by label + group |

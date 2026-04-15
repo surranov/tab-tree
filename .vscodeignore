@@ -1,13 +1,34 @@
+# Source
 src/**
 test/**
 docs/**
-node_modules/**
+
+# Build tooling
+scripts/**
+esbuild.js
+tsconfig.json
+tsconfig.integration.json
+vitest.config.ts
+.vscode-test.mjs
+eslint.config.mjs
+
+# Development environment
 .vscode/**
 .vscode-test/**
 .github/**
-esbuild.js
-tsconfig.json
-vitest.config.ts
-eslint.config.mjs
+.husky/**
+.claude/**
+
+# Git / npm
 .gitignore
+node_modules/**
+package-lock.json
+
+# Source art (only PNG ships)
+images/icon.svg
+
+# Compiled test output
+out/**
+
+# Packaged artifacts
 *.vsix

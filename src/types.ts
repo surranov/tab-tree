@@ -19,6 +19,7 @@ export interface ITabInfo {
     scheme: string;
     label: string;
     groupIndex: number;
+    tabIndex: number;
     isDirty: boolean;
     isPreview: boolean;
     isPinned: boolean;

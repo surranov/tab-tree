@@ -4,7 +4,7 @@
   "description": "View your open editor tabs as a nested file tree",
   "version": "0.0.1",
   "publisher": "surranov",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "https://github.com/surranov/tab-tree"
@@ -24,6 +24,7 @@
     "explorer"
   ],
   "main": "./dist/extension.js",
+  "icon": "images/icon.png",
   "activationEvents": [],
   "contributes": {
     "views": {
@@ -38,12 +39,12 @@
       {
         "command": "tabTree.collapseAll",
         "title": "Collapse All",
-        "icon": "$(collapse-all)"
+        "icon": "$(fold)"
       },
       {
         "command": "tabTree.expandAll",
         "title": "Expand All",
-        "icon": "$(expand-all)"
+        "icon": "$(unfold)"
       },
       {
         "command": "tabTree.closeAll",
@@ -51,14 +52,24 @@
         "icon": "$(close-all)"
       },
       {
-        "command": "tabTree.toggleFollowActiveFile",
-        "title": "Toggle Follow Active File",
-        "icon": "$(target)"
+        "command": "tabTree.enableFollowActiveFile",
+        "title": "Enable Follow Active File",
+        "icon": "$(eye-closed)"
       },
       {
-        "command": "tabTree.toggleShowPreviewTabs",
-        "title": "Toggle Show Preview Tabs",
+        "command": "tabTree.disableFollowActiveFile",
+        "title": "Disable Follow Active File",
         "icon": "$(eye)"
+      },
+      {
+        "command": "tabTree.enablePreview",
+        "title": "Enable Preview Tabs",
+        "icon": "$(pinned)"
+      },
+      {
+        "command": "tabTree.disablePreview",
+        "title": "Disable Preview Tabs",
+        "icon": "$(pin)"
       },
       {
         "command": "tabTree.closeTab",
@@ -71,6 +82,11 @@
         "icon": "$(close)"
       },
       {
+        "command": "tabTree.collapseFolder",
+        "title": "Collapse Folder",
+        "icon": "$(fold)"
+      },
+      {
         "command": "tabTree.openToSide",
         "title": "Open to the Side"
       },
@@ -79,12 +95,28 @@
         "title": "Open With..."
       },
       {
+        "command": "tabTree.openMarkdownPreview",
+        "title": "Open Preview"
+      },
+      {
+        "command": "tabTree.openMarkdownPreviewSide",
+        "title": "Open Preview to the Side"
+      },
+      {
+        "command": "tabTree.copyName",
+        "title": "Copy Name"
+      },
+      {
         "command": "tabTree.copyPath",
-        "title": "Copy Path"
+        "title": "Copy Absolute Path"
       },
       {
         "command": "tabTree.copyRelativePath",
         "title": "Copy Relative Path"
+      },
+      {
+        "command": "tabTree.openTerminalHere",
+        "title": "Open Terminal Here"
       },
       {
         "command": "tabTree.revealInOS",
@@ -93,6 +125,10 @@
       {
         "command": "tabTree.revealInExplorer",
         "title": "Reveal in Explorer"
+      },
+      {
+        "command": "tabTree.openInBrowser",
+        "title": "Open in Browser"
       },
       {
         "command": "tabTree.selectForCompare",
@@ -117,29 +153,108 @@
       {
         "command": "tabTree.newFolder",
         "title": "New Folder..."
+      },
+      {
+        "command": "tabTree.move",
+        "title": "Move..."
+      },
+      {
+        "command": "tabTree.findInFolder",
+        "title": "Find in Folder..."
+      },
+      {
+        "command": "tabTree.gitStage",
+        "title": "Git: Stage"
+      },
+      {
+        "command": "tabTree.gitUnstage",
+        "title": "Git: Unstage"
+      },
+      {
+        "command": "tabTree.gitDiscard",
+        "title": "Git: Discard Changes"
+      },
+      {
+        "command": "tabTree.gitViewHistory",
+        "title": "Git: View File History"
+      },
+      {
+        "command": "tabTree.openAllGitChanges",
+        "title": "Open All Git Changes",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "tabTree.openStagedGitChanges",
+        "title": "Open Staged Git Changes",
+        "icon": "$(git-pull-request)"
+      },
+      {
+        "command": "tabTree.findFileReferences",
+        "title": "Find File References"
+      },
+      {
+        "command": "tabTree.openFileHistory",
+        "title": "Open File History"
+      },
+      {
+        "command": "tabTree.openFileHistoryInGraph",
+        "title": "Open File History in Commit Graph"
+      },
+      {
+        "command": "tabTree.visualizeFileHistory",
+        "title": "Open Visual File History"
+      },
+      {
+        "command": "tabTree.quickOpenFileHistory",
+        "title": "Quick Open File History"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "tabTree.toggleFollowActiveFile",
+          "command": "tabTree.openAllGitChanges",
           "when": "view == tabTree",
           "group": "navigation@1"
         },
         {
-          "command": "tabTree.toggleShowPreviewTabs",
+          "command": "tabTree.openStagedGitChanges",
           "when": "view == tabTree",
           "group": "navigation@2"
         },
         {
+          "command": "tabTree.enableFollowActiveFile",
+          "when": "view == tabTree && !tabTree.followActiveFile",
+          "group": "navigation@3"
+        },
+        {
+          "command": "tabTree.disableFollowActiveFile",
+          "when": "view == tabTree && tabTree.followActiveFile",
+          "group": "navigation@3"
+        },
+        {
+          "command": "tabTree.enablePreview",
+          "when": "view == tabTree && !tabTree.previewEnabled",
+          "group": "navigation@4"
+        },
+        {
+          "command": "tabTree.disablePreview",
+          "when": "view == tabTree && tabTree.previewEnabled",
+          "group": "navigation@4"
+        },
+        {
           "command": "tabTree.expandAll",
           "when": "view == tabTree",
-          "group": "navigation@3"
+          "group": "navigation@5"
+        },
+        {
+          "command": "tabTree.collapseAll",
+          "when": "view == tabTree",
+          "group": "navigation@6"
         },
         {
           "command": "tabTree.closeAll",
           "when": "view == tabTree",
-          "group": "navigation@4"
+          "group": "navigation@7"
         }
       ],
       "view/item/context": [
@@ -154,74 +269,174 @@
           "group": "inline@1"
         },
         {
-          "command": "tabTree.openToSide",
-          "when": "view == tabTree && viewItem == file",
-          "group": "navigation@1"
+          "command": "tabTree.closeFolderTabs",
+          "when": "view == tabTree && viewItem == workspaceRoot",
+          "group": "inline@1"
         },
         {
-          "command": "tabTree.openWith",
-          "when": "view == tabTree && viewItem == file",
-          "group": "navigation@2"
-        },
-        {
-          "command": "tabTree.selectForCompare",
-          "when": "view == tabTree && viewItem == file",
-          "group": "3_compare@1"
-        },
-        {
-          "command": "tabTree.compareWithSelected",
-          "when": "view == tabTree && viewItem == file",
-          "group": "3_compare@2"
-        },
-        {
-          "command": "tabTree.copyPath",
-          "when": "view == tabTree && viewItem =~ /^(file|folder)$/",
-          "group": "6_copypath@1"
-        },
-        {
-          "command": "tabTree.copyRelativePath",
-          "when": "view == tabTree && viewItem =~ /^(file|folder)$/",
-          "group": "6_copypath@2"
-        },
-        {
-          "command": "tabTree.revealInOS",
-          "when": "view == tabTree && viewItem =~ /^(file|folder)$/",
-          "group": "6_copypath@3"
-        },
-        {
-          "command": "tabTree.revealInExplorer",
-          "when": "view == tabTree && viewItem == file",
-          "group": "6_copypath@4"
-        },
-        {
-          "command": "tabTree.newFile",
-          "when": "view == tabTree && viewItem == folder",
-          "group": "7_modification@1"
-        },
-        {
-          "command": "tabTree.newFolder",
-          "when": "view == tabTree && viewItem == folder",
-          "group": "7_modification@2"
-        },
-        {
-          "command": "tabTree.rename",
-          "when": "view == tabTree && viewItem == file",
-          "group": "7_modification@3"
-        },
-        {
-          "command": "tabTree.delete",
-          "when": "view == tabTree && viewItem =~ /^(file|folder)$/",
-          "group": "7_modification@4"
+          "command": "tabTree.closeTab",
+          "when": "view == tabTree && viewItem == nonFileTab",
+          "group": "inline@1"
         },
         {
           "command": "tabTree.closeTab",
           "when": "view == tabTree && viewItem == file",
-          "group": "8_close@1"
+          "group": "1_close@1"
+        },
+        {
+          "command": "tabTree.closeTab",
+          "when": "view == tabTree && viewItem == nonFileTab",
+          "group": "1_close@1"
         },
         {
           "command": "tabTree.closeFolderTabs",
           "when": "view == tabTree && viewItem == folder",
-          "group": "8_close@1"
+          "group": "1_close@1"
+        },
+        {
+          "command": "tabTree.collapseFolder",
+          "when": "view == tabTree && viewItem =~ /^(folder|workspaceRoot)$/",
+          "group": "1_close@2"
+        },
+        {
+          "command": "tabTree.openToSide",
+          "when": "view == tabTree && viewItem == file",
+          "group": "2_actions@1"
+        },
+        {
+          "command": "tabTree.openWith",
+          "when": "view == tabTree && viewItem == file",
+          "group": "2_actions@2"
+        },
+        {
+          "command": "tabTree.openMarkdownPreview",
+          "when": "view == tabTree && viewItem == file && resourceLangId == markdown",
+          "group": "2_actions@2a"
+        },
+        {
+          "command": "tabTree.openMarkdownPreviewSide",
+          "when": "view == tabTree && viewItem == file && resourceLangId == markdown",
+          "group": "2_actions@2b"
+        },
+        {
+          "command": "tabTree.newFile",
+          "when": "view == tabTree && viewItem =~ /^(file|folder|workspaceRoot)$/",
+          "group": "2_actions@3"
+        },
+        {
+          "command": "tabTree.newFolder",
+          "when": "view == tabTree && viewItem =~ /^(file|folder|workspaceRoot)$/",
+          "group": "2_actions@4"
+        },
+        {
+          "command": "tabTree.rename",
+          "when": "view == tabTree && viewItem == file",
+          "group": "2_actions@5"
+        },
+        {
+          "command": "tabTree.move",
+          "when": "view == tabTree && viewItem == file",
+          "group": "2_actions@6"
+        },
+        {
+          "command": "tabTree.delete",
+          "when": "view == tabTree && viewItem =~ /^(file|folder)$/",
+          "group": "2_actions@7"
+        },
+        {
+          "command": "tabTree.copyName",
+          "when": "view == tabTree && viewItem =~ /^(file|folder|workspaceRoot|nonFileTab)$/",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "tabTree.copyRelativePath",
+          "when": "view == tabTree && viewItem =~ /^(file|folder|workspaceRoot)$/",
+          "group": "3_copy@2"
+        },
+        {
+          "command": "tabTree.copyPath",
+          "when": "view == tabTree && viewItem =~ /^(file|folder|workspaceRoot)$/",
+          "group": "3_copy@3"
+        },
+        {
+          "command": "tabTree.selectForCompare",
+          "when": "view == tabTree && viewItem == file",
+          "group": "4_compare@1"
+        },
+        {
+          "command": "tabTree.compareWithSelected",
+          "when": "view == tabTree && viewItem == file",
+          "group": "4_compare@2"
+        },
+        {
+          "command": "tabTree.findInFolder",
+          "when": "view == tabTree && viewItem =~ /^(file|folder|workspaceRoot)$/",
+          "group": "5_find@1"
+        },
+        {
+          "command": "tabTree.findFileReferences",
+          "when": "view == tabTree && viewItem == file && tabTree.ext.tsFileReferencesAvailable && (resourceLangId == typescript || resourceLangId == typescriptreact || resourceLangId == javascript || resourceLangId == javascriptreact)",
+          "group": "5_find@2"
+        },
+        {
+          "command": "tabTree.revealInOS",
+          "when": "view == tabTree && viewItem =~ /^(file|folder|workspaceRoot)$/",
+          "group": "6_reveal@1"
+        },
+        {
+          "command": "tabTree.revealInExplorer",
+          "when": "view == tabTree && viewItem == file",
+          "group": "6_reveal@2"
+        },
+        {
+          "command": "tabTree.openInBrowser",
+          "when": "view == tabTree && viewItem == file",
+          "group": "6_reveal@3"
+        },
+        {
+          "command": "tabTree.gitStage",
+          "when": "view == tabTree && viewItem =~ /^(file|folder|workspaceRoot)$/",
+          "group": "7_git@1"
+        },
+        {
+          "command": "tabTree.gitUnstage",
+          "when": "view == tabTree && viewItem =~ /^(file|folder|workspaceRoot)$/",
+          "group": "7_git@2"
+        },
+        {
+          "command": "tabTree.gitDiscard",
+          "when": "view == tabTree && viewItem =~ /^(file|folder|workspaceRoot)$/",
+          "group": "7_git@3"
+        },
+        {
+          "command": "tabTree.gitViewHistory",
+          "when": "view == tabTree && viewItem == file",
+          "group": "7_git@4"
+        },
+        {
+          "command": "tabTree.openFileHistory",
+          "when": "view == tabTree && viewItem == file && tabTree.ext.gitlensOpenFileHistoryAvailable",
+          "group": "7_git@5"
+        },
+        {
+          "command": "tabTree.openFileHistoryInGraph",
+          "when": "view == tabTree && viewItem == file && tabTree.ext.gitlensOpenFileHistoryInGraphAvailable",
+          "group": "7_git@6"
+        },
+        {
+          "command": "tabTree.visualizeFileHistory",
+          "when": "view == tabTree && viewItem == file && tabTree.ext.gitlensVisualizeFileHistoryAvailable",
+          "group": "7_git@7"
+        },
+        {
+          "command": "tabTree.quickOpenFileHistory",
+          "when": "view == tabTree && viewItem == file && tabTree.ext.gitlensQuickOpenFileHistoryAvailable",
+          "group": "7_git@8"
+        },
+        {
+          "command": "tabTree.openTerminalHere",
+          "when": "view == tabTree && viewItem =~ /^(file|folder|workspaceRoot)$/",
+          "group": "8_terminal@1"
         }
       ]
     },
@@ -232,27 +447,19 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically reveal and select the active editor in the tree"
-        },
-        "tabTree.showPreviewTabs": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show preview (temporary) tabs in the tree"
-        },
-        "tabTree.showNonFileTabs": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show non-file tabs (Settings, Webviews, etc.) in the tree"
         }
       }
     }
   },
   "scripts": {
+    "icon:build": "node scripts/build-icon.mjs",
     "build": "node esbuild.js",
     "build:prod": "node esbuild.js --production",
     "watch": "node esbuild.js --watch",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
-    "test:integration": "node ./test/integration/runTests.js",
+    "pretest:integration": "npm run build && tsc -p tsconfig.integration.json",
+    "test:integration": "vscode-test",
     "test": "npm run test:unit && npm run test:integration",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
@@ -267,14 +474,18 @@
     ]
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.4.0",
     "@vscode/vsce": "^3.0.0",
     "esbuild": "^0.24.0",
     "eslint": "^9.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
+    "mocha": "^11.7.5",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.0.0",
     "vitest": "^2.0.0"
