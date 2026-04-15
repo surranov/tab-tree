@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildTree, sortChildren } from '../../src/treeBuilder';
+import { getNodeId } from '../../src/treeUtils';
 import { ETreeNodeType, IBuildTreeInput, ITabInfo, ITreeNode } from '../../src/types';
 
 // ---------------------------------------------------------------------------
@@ -517,6 +518,52 @@ describe('buildTree — 13.6 tab groups', () => {
         expect(groups).toHaveLength(1);
         expect(findNode(groups[0].children, ['project', 'moving.ts'])).toBeDefined();
         expect(findNode(groups[0].children, ['project', 'stay.ts'])).toBeDefined();
+    });
+
+    it('regression: two groups under the same workspace root → every descendant has a unique id', () => {
+        // Split-view bug: WorkspaceRoot/Folder nodes duplicated across groups
+        // shared the same getNodeId, so VS Code's TreeView aliased them and
+        // rendered Group 2's children for Group 1 as well.
+        const result = buildTree(input(
+            [
+                tab('/project/src/a.ts', { groupIndex: 1 }),
+                tab('/project/src/b.ts', { groupIndex: 1 }),
+                tab('/project/src/c.ts', { groupIndex: 2 }),
+            ],
+            ['/project'],
+            2,
+        ));
+
+        const ids: string[] = [];
+        const walk = (nodes: ITreeNode[]): void => {
+            for (const n of nodes) {
+                ids.push(getNodeId(n));
+                walk(n.children);
+            }
+        };
+        walk(result);
+
+        expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it('regression: every node inside a tab group carries its groupIndex', () => {
+        const result = buildTree(input(
+            [
+                tab('/project/src/a.ts', { groupIndex: 1 }),
+                tab('/project/src/b.ts', { groupIndex: 2 }),
+            ],
+            ['/project'],
+            2,
+        ));
+
+        const walkAndCheck = (nodes: ITreeNode[], expected: number): void => {
+            for (const n of nodes) {
+                expect(n.groupIndex).toBe(expected);
+                walkAndCheck(n.children, expected);
+            }
+        };
+        walkAndCheck(result[0].children, 1);
+        walkAndCheck(result[1].children, 2);
     });
 });
 

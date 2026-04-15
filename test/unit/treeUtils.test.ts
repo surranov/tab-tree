@@ -281,6 +281,21 @@ describe('getNodeId — 2.13', () => {
         const node = file('/project/src/app.ts');
         expect(getNodeId(node)).toBe(getNodeId(node));
     });
+
+    it('split-view: same workspaceRoot path in two groups → different ids via node.groupIndex', () => {
+        // Regression: without node.groupIndex, both WorkspaceRoot nodes produce
+        // the same id and VS Code's TreeView aliases them, rendering Group 2's
+        // children under Group 1 as well.
+        const ws1: ITreeNode = { ...workspaceRoot('/project'), groupIndex: 1 };
+        const ws2: ITreeNode = { ...workspaceRoot('/project'), groupIndex: 2 };
+        expect(getNodeId(ws1)).not.toBe(getNodeId(ws2));
+    });
+
+    it('split-view: same folder path in two groups → different ids via node.groupIndex', () => {
+        const f1: ITreeNode = { ...folder('/project/src'), groupIndex: 1 };
+        const f2: ITreeNode = { ...folder('/project/src'), groupIndex: 2 };
+        expect(getNodeId(f1)).not.toBe(getNodeId(f2));
+    });
 });
 
 // ---------------------------------------------------------------------------

@@ -125,6 +125,15 @@ function sortTreeRecursive(node: ITreeNode): void {
     }
 }
 
+function stampGroupIndex(nodes: ITreeNode[], groupIndex: number): void {
+    for (const node of nodes) {
+        node.groupIndex = groupIndex;
+        if (node.children.length > 0) {
+            stampGroupIndex(node.children, groupIndex);
+        }
+    }
+}
+
 export function buildTree(input: IBuildTreeInput): ITreeNode[] {
     const { tabs, workspaceRoots, tabGroupCount } = input;
 
@@ -142,11 +151,15 @@ export function buildTree(input: IBuildTreeInput): ITreeNode[] {
             const groupTabs = tabs.filter((t) => t.groupIndex === groupIndex);
             if (groupTabs.length === 0) continue;
 
+            const children = buildGroupTree(groupTabs, workspaceRoots);
+            stampGroupIndex(children, groupIndex);
+
             const groupNode: ITreeNode = {
                 type: ETreeNodeType.TabGroup,
                 label: `Group ${groupIndex}`,
                 path: '',
-                children: buildGroupTree(groupTabs, workspaceRoots),
+                children,
+                groupIndex,
             };
             result.push(groupNode);
         }

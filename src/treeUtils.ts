@@ -28,7 +28,10 @@ export function getNonFileTabIconId(node: ITreeNode): string {
 }
 
 export function getNodeId(node: ITreeNode): string {
-    const group = node.tabInfo?.groupIndex ?? '';
+    // In split-view mode WorkspaceRoot/Folder/ExternalRoot nodes duplicate across
+    // groups with the same path, so the owning group must be part of the id or
+    // VS Code's TreeView aliases them and renders Group 2's children for both.
+    const group = node.tabInfo?.groupIndex ?? node.groupIndex ?? '';
     const key = node.path || node.label;
     // tabIndex is intentionally omitted for File nodes: VS Code guarantees a
     // single file opens at most once per tab group, so (type, path, group) is

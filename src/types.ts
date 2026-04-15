@@ -33,6 +33,7 @@ export interface ITreeNode {
     path: string;
     children: ITreeNode[];
     tabInfo?: ITabInfo;
+    groupIndex?: number;
 }
 
 export interface IBuildTreeInput {
