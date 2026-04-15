@@ -18,6 +18,7 @@ export class TabTracker implements vscode.Disposable {
         this.disposables.push(
             vscode.window.tabGroups.onDidChangeTabs(() => this.scheduleUpdate()),
             vscode.window.tabGroups.onDidChangeTabGroups(() => this.scheduleUpdate()),
+            vscode.workspace.onDidRenameFiles(() => this.scheduleUpdate()),
             this._onDidChange,
         );
     }
@@ -36,8 +37,8 @@ export class TabTracker implements vscode.Disposable {
         const tabs: ITabInfo[] = [];
 
         for (const group of vscode.window.tabGroups.all) {
-            for (const tab of group.tabs) {
-                const info = this.extractTabInfo(tab, group);
+            for (let i = 0; i < group.tabs.length; i++) {
+                const info = this.extractTabInfo(group.tabs[i], group, i);
                 if (info) {
                     tabs.push(info);
                 }
@@ -59,7 +60,7 @@ export class TabTracker implements vscode.Disposable {
         return this.extractFilePath(activeTab);
     }
 
-    private extractTabInfo(tab: vscode.Tab, group: vscode.TabGroup): ITabInfo | undefined {
+    private extractTabInfo(tab: vscode.Tab, group: vscode.TabGroup, tabIndex: number): ITabInfo | undefined {
         const tabType = this.getTabType(tab);
 
         if (tabType === 'terminal') {
@@ -74,6 +75,7 @@ export class TabTracker implements vscode.Disposable {
             scheme: scheme ?? 'unknown',
             label: tab.label,
             groupIndex: group.viewColumn,
+            tabIndex,
             isDirty: tab.isDirty,
             isPreview: tab.isPreview,
             isPinned: tab.isPinned,

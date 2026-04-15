@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tab Tree — Stacked T v3</title>
+<style>
+    :root {
+        color-scheme: light dark;
+        --bg-light: #f5f5f5;
+        --bg-dark: #1e1e1e;
+        --card-light: #ffffff;
+        --card-dark: #2d2d30;
+        --text-light: #1e1e1e;
+        --text-dark: #e0e0e0;
+        --border-light: #dddddd;
+        --border-dark: #3e3e42;
+    }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        margin: 0;
+        padding: 32px;
+        background: var(--bg-light);
+        color: var(--text-light);
+        max-width: 1400px;
+    }
+    @media (prefers-color-scheme: dark) {
+        body { background: var(--bg-dark); color: var(--text-dark); }
+    }
+    h1 { margin: 0 0 8px; }
+    h2 { margin: 40px 0 16px; font-size: 1.1rem; font-weight: 600; }
+    p.hint { opacity: 0.75; margin: 0 0 24px; font-size: 0.9rem; line-height: 1.55; }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+    @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        padding: 20px;
+        background: var(--card-light);
+    }
+    @media (prefers-color-scheme: dark) {
+        .card { border-color: var(--border-dark); background: var(--card-dark); }
+    }
+
+    .card h3 { margin: 0 0 6px; font-size: 1.05rem; }
+    .card .tag { display: inline-block; padding: 2px 8px; border-radius: 4px;
+                 font-size: 0.72rem; background: rgba(128,128,128,0.15); margin-bottom: 12px; }
+    .card p.desc { margin: 0 0 16px; font-size: 0.85rem; opacity: 0.75; line-height: 1.5; }
+
+    .sizes { display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap; }
+    .sizes > div { text-align: center; }
+    .sizes small { display: block; font-size: 0.7rem; opacity: 0.6; margin-top: 4px; }
+
+    .bg-compare {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 16px;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .bg-compare > div { padding: 16px; display: flex; justify-content: center; align-items: center; gap: 12px; }
+    .bg-light  { background: #ffffff; color: #1e1e1e; }
+    .bg-dark   { background: #1e1e1e; color: #e0e0e0; }
+
+    svg { display: block; }
+    svg.thumb  { width: 128px; height: 128px; }
+    svg.small  { width: 48px;  height: 48px;  }
+    svg.tiny   { width: 24px;  height: 24px;  }
+    svg.ultra  { width: 16px;  height: 16px;  }
+    svg.defs   { position: absolute; width: 0; height: 0; }
+
+    .before-after {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-top: 16px;
+    }
+    .before-after .slot {
+        border: 1px dashed rgba(128,128,128,0.4);
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+    }
+    .before-after .slot h4 { margin: 0 0 12px; font-size: 0.85rem; opacity: 0.7; font-weight: 600; }
+
+    .metrics {
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 0.78rem;
+        background: rgba(128,128,128,0.1);
+        padding: 12px 16px;
+        border-radius: 8px;
+        line-height: 1.7;
+        margin: 0 0 16px;
+    }
+</style>
+</head>
+<body>
+
+<h1>Tab Tree — Stacked T v3</h1>
+<p class="hint">
+    Fixes against v2: (1) stem less shifted left (center 38→44). (2) children form a proper
+    staircase where the right-edge step is constant — top bar → row 1 → row 2 → row 3
+    each step is 12 units. (3) stem extends below the last row by the same gap it has
+    from the top bar (12 units top, 12 units bottom). (4) palette taken from earlier
+    "Node Tree" concept — amber / green / red on VS Code blue.
+</p>
+
+<p class="metrics">
+    canvas 128×128 &nbsp;·&nbsp; top bar 14-114 × 14-32 &nbsp;·&nbsp; stem 36-52 × 18-114 &nbsp;·&nbsp; step d=12<br>
+    y-rhythm: top bar bottom 32 → gap 12 → row 1 (44-58) → gap 8 → row 2 (66-80) → gap 8 → row 3 (88-102) → gap 12 → stem bottom 114
+</p>
+
+<!-- ==================================================================== -->
+<!-- DEFINITIONS ========================================================= -->
+<!-- ==================================================================== -->
+
+<svg class="defs" aria-hidden="true">
+    <defs>
+
+    <!-- ====================================================== -->
+    <!-- OLD v2 — reference only                                  -->
+    <!-- ====================================================== -->
+    <symbol id="old" viewBox="0 0 128 128">
+        <rect x="30" y="22" width="16" height="90" rx="5" fill="#007ACC"/>
+        <rect x="14" y="18" width="100" height="18" rx="5" fill="#007ACC"/>
+        <rect x="42" y="48" width="68" height="14" rx="4" fill="#22B8CF"/>
+        <rect x="42" y="70" width="58" height="14" rx="4" fill="#10B981"/>
+        <rect x="42" y="92" width="48" height="14" rx="4" fill="#FBBF24"/>
+    </symbol>
+
+    <!-- ====================================================== -->
+    <!-- A — Through-stem (rows climb onto the stem)              -->
+    <!-- Stem 36-52. Rows left x=44 (8 units inside the stem,     -->
+    <!-- drawn ON TOP so rows visually cover the right half of    -->
+    <!-- the stem at each row's y-band).                          -->
+    <!-- Row right edges: 102 / 90 / 78 — step d=12.              -->
+    <!-- Top bar right 114 → step to row 1 right 102 is also 12.  -->
+    <!-- ====================================================== -->
+    <symbol id="va" viewBox="0 0 128 128">
+        <!-- stem (drawn first, covered at top by top bar) -->
+        <rect x="36" y="18" width="16" height="96" rx="5" fill="#007ACC"/>
+        <!-- top bar -->
+        <rect x="14" y="14" width="100" height="18" rx="5" fill="#007ACC"/>
+        <!-- rows -->
+        <rect x="44" y="44" width="58" height="14" rx="4" fill="#FBBF24"/>
+        <rect x="44" y="66" width="46" height="14" rx="4" fill="#10B981"/>
+        <rect x="44" y="88" width="34" height="14" rx="4" fill="#EF4444"/>
+    </symbol>
+
+    <!-- ====================================================== -->
+    <!-- B — Detached (rows hover right of the stem)              -->
+    <!-- Stem 36-52. Rows left x=58 (gap 6 from stem right 52).   -->
+    <!-- Same row right edges: 102 / 90 / 78.                     -->
+    <!-- ====================================================== -->
+    <symbol id="vb" viewBox="0 0 128 128">
+        <!-- stem (no overlap needed; still drawn first for consistency) -->
+        <rect x="36" y="18" width="16" height="96" rx="5" fill="#007ACC"/>
+        <!-- top bar -->
+        <rect x="14" y="14" width="100" height="18" rx="5" fill="#007ACC"/>
+        <!-- rows — gap from stem, same right edges -->
+        <rect x="58" y="44" width="44" height="14" rx="4" fill="#FBBF24"/>
+        <rect x="58" y="66" width="32" height="14" rx="4" fill="#10B981"/>
+        <rect x="58" y="88" width="20" height="14" rx="4" fill="#EF4444"/>
+    </symbol>
+
+    <!-- ====================================================== -->
+    <!-- C — Growing from under stem                              -->
+    <!-- Rows drawn FIRST, then stem on top, then top bar.        -->
+    <!-- Rows start at x=40 (inside stem) and extend to right     -->
+    <!-- edges 102/90/78. The portion of the row inside the stem -->
+    <!-- (x=40..52) is hidden by the stem, so visually rows       -->
+    <!-- "sprout" out of the stem's right edge.                   -->
+    <!-- Visible row widths: 50/38/26.                            -->
+    <!-- ====================================================== -->
+    <symbol id="vc" viewBox="0 0 128 128">
+        <!-- rows FIRST (behind stem) -->
+        <rect x="40" y="44" width="62" height="14" rx="4" fill="#FBBF24"/>
+        <rect x="40" y="66" width="50" height="14" rx="4" fill="#10B981"/>
+        <rect x="40" y="88" width="38" height="14" rx="4" fill="#EF4444"/>
+        <!-- stem on top of rows -->
+        <rect x="36" y="18" width="16" height="96" rx="5" fill="#007ACC"/>
+        <!-- top bar on top -->
+        <rect x="14" y="14" width="100" height="18" rx="5" fill="#007ACC"/>
+    </symbol>
+
+    </defs>
+</svg>
+
+<!-- ==================================================================== -->
+<!-- BEFORE / AFTER ====================================================== -->
+<!-- ==================================================================== -->
+
+<h2>Before / after — v2 → v3</h2>
+<div class="before-after">
+    <div class="slot">
+        <h4>OLD v2</h4>
+        <svg class="thumb"><use href="#old"/></svg>
+    </div>
+    <div class="slot">
+        <h4>NEW v3 (through-stem)</h4>
+        <svg class="thumb"><use href="#va"/></svg>
+    </div>
+</div>
+
+<!-- ==================================================================== -->
+<!-- VARIANTS ============================================================ -->
+<!-- ==================================================================== -->
+
+<h2>Three variants</h2>
+
+<div class="grid">
+
+    <div class="card">
+        <h3>A — Through-stem</h3>
+        <span class="tag">rows climb onto the stem · overlap 8 px</span>
+        <p class="desc">
+            Rows start at x=44, which is 8 px inside the stem's left edge. Drawn on top
+            of the stem, so each row visually covers the right half of the stem at its
+            y-band. Reproduces the "rows awkwardly emerging from under the stem" look
+            you liked.
+        </p>
+        <div class="sizes">
+            <div><svg class="thumb"><use href="#va"/></svg><small>128</small></div>
+            <div><svg class="small"><use href="#va"/></svg><small>48</small></div>
+            <div><svg class="tiny"><use href="#va"/></svg><small>24</small></div>
+            <div><svg class="ultra"><use href="#va"/></svg><small>16</small></div>
+        </div>
+        <div class="bg-compare">
+            <div class="bg-light"><svg class="small"><use href="#va"/></svg></div>
+            <div class="bg-dark"><svg class="small"><use href="#va"/></svg></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>B — Detached</h3>
+        <span class="tag">rows float right of the stem · gap 6 px</span>
+        <p class="desc">
+            Rows start at x=58 with a 6 px gap from the stem's right edge. Same row right
+            edges as variant A — same staircase silhouette — just shifted right to detach
+            from the stem. Cleaner, more "breathing" look; less of a T-letter feel because
+            the children don't touch the stem.
+        </p>
+        <div class="sizes">
+            <div><svg class="thumb"><use href="#vb"/></svg><small>128</small></div>
+            <div><svg class="small"><use href="#vb"/></svg><small>48</small></div>
+            <div><svg class="tiny"><use href="#vb"/></svg><small>24</small></div>
+            <div><svg class="ultra"><use href="#vb"/></svg><small>16</small></div>
+        </div>
+        <div class="bg-compare">
+            <div class="bg-light"><svg class="small"><use href="#vb"/></svg></div>
+            <div class="bg-dark"><svg class="small"><use href="#vb"/></svg></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>C — Growing from under stem</h3>
+        <span class="tag">rows sprout out of the stem · behind stem</span>
+        <p class="desc">
+            Rows drawn first, stem drawn on top. Rows start at x=40 (inside the stem)
+            and the stem covers their left portion — visually the rows sprout out of
+            the stem's right edge. Strongest "hierarchy grows from parent" read. Visible
+            row widths: 50 / 38 / 26.
+        </p>
+        <div class="sizes">
+            <div><svg class="thumb"><use href="#vc"/></svg><small>128</small></div>
+            <div><svg class="small"><use href="#vc"/></svg><small>48</small></div>
+            <div><svg class="tiny"><use href="#vc"/></svg><small>24</small></div>
+            <div><svg class="ultra"><use href="#vc"/></svg><small>16</small></div>
+        </div>
+        <div class="bg-compare">
+            <div class="bg-light"><svg class="small"><use href="#vc"/></svg></div>
+            <div class="bg-dark"><svg class="small"><use href="#vc"/></svg></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ==================================================================== -->
+<!-- READABILITY ========================================================= -->
+<!-- ==================================================================== -->
+
+<h2>A / B / C side by side — 16 px, 24 px</h2>
+<div class="bg-compare">
+    <div class="bg-light">
+        <svg class="ultra"><use href="#va"/></svg>
+        <svg class="ultra"><use href="#vb"/></svg>
+        <svg class="ultra"><use href="#vc"/></svg>
+        <svg class="tiny"><use href="#va"/></svg>
+        <svg class="tiny"><use href="#vb"/></svg>
+        <svg class="tiny"><use href="#vc"/></svg>
+    </div>
+    <div class="bg-dark">
+        <svg class="ultra"><use href="#va"/></svg>
+        <svg class="ultra"><use href="#vb"/></svg>
+        <svg class="ultra"><use href="#vc"/></svg>
+        <svg class="tiny"><use href="#va"/></svg>
+        <svg class="tiny"><use href="#vb"/></svg>
+        <svg class="tiny"><use href="#vc"/></svg>
+    </div>
+</div>
+
+</body>
+</html>
