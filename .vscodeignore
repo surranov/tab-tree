@@ -18,6 +18,9 @@ eslint.config.mjs
 .github/**
 .husky/**
 .claude/**
+.idea/**
+.DS_Store
+**/.DS_Store
 
 # Git / npm
 .gitignore

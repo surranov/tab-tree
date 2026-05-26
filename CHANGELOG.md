@@ -7,6 +7,12 @@ All notable changes to Tab Tree will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.8] - 2026-05-26
+
+### Fixed
+
+- Package hygiene: `.idea/` (IntelliJ metadata) and `.DS_Store` are now excluded from the published `.vsix` via `.vscodeignore`.
+
 ## [0.0.7] - 2026-05-26
 
 ### Added
