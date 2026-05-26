@@ -249,6 +249,31 @@ await vscode.workspace.applyEdit(edit);
 
 ---
 
+## D-019: WebView toggle scope — only WebView, not all "special" tabs
+
+**Date:** 2026-04-17
+
+**Decision:** The "Show/Hide WebView Tabs" toolbar toggle controls **only** `TabInputWebview`-typed tabs. Notebook (`TabInputNotebook`, `TabInputNotebookDiff`), Custom (`TabInputCustom`), and Diff (`TabInputTextDiff`) tabs are always visible regardless of the setting. Terminal tabs remain excluded by design (D-009).
+
+**Rejected alternative:** A broader "Show Special Tabs" toggle that would group all non-file-scheme tabs (webview + custom + notebook-diff, etc.) behind a single switch.
+
+**Rationale:**
+
+- Notebook, Custom, and TextDiff tabs are backed by real files on disk — hiding them would lose real content the user is editing. They belong to the file tree.
+- WebView-backed tabs (Settings, Welcome, Preview, extension panels) are the only category that is purely UI with no underlying file — the only category where "noise vs. information" trade-off is real.
+- A single-category toggle is easier to name and reason about ("Show WebView Tabs") than a vague "Show Special Tabs" that would require the user to remember which types fall under "special".
+
+**Implementation:**
+
+- Configuration: `tabTree.showWebViewTabs: boolean` (default `true`, Global target).
+- Filter: `TabTracker.extractTabInfo` returns `undefined` for `tabType === 'webview'` when the setting is off — same pattern already used for Terminal (D-009).
+- Commands: `tabTree.showWebViewTabs` / `tabTree.hideWebViewTabs` (paired, mirrors `enableFollowActiveFile` / `disableFollowActiveFile`).
+- Toolbar: paired navigation buttons with `browser` / `window` codicons, gated by the `tabTree.showWebViewTabs` context key.
+
+**Default:** `true`. On first install the user sees everything they've opened — no hidden content surprises. They can turn it off per preference.
+
+---
+
 ## All decisions — summary
 
 | ID | Question | Decision |
@@ -271,3 +296,4 @@ await vscode.workspace.applyEdit(edit);
 | D-016 | Rename/Move API | WorkspaceEdit.renameFile (not workspace.fs.rename) |
 | D-017 | Non-file tab focus | focusNthEditorGroup + openEditorAtIndex |
 | D-018 | Non-file tab close | findVscodeTab fallback by label + group |
+| D-019 | WebView toggle scope | Only webview tabs, not notebook/custom/diff |

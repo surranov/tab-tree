@@ -2,7 +2,7 @@
   "name": "tab-tree",
   "displayName": "Tab Tree",
   "description": "View your open editor tabs as a nested file tree",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "publisher": "surranov",
   "license": "GPL-3.0-only",
   "repository": {
@@ -70,6 +70,16 @@
         "command": "tabTree.disablePreview",
         "title": "Disable Preview Tabs",
         "icon": "$(pin)"
+      },
+      {
+        "command": "tabTree.showWebViewTabs",
+        "title": "Show WebView Tabs",
+        "icon": "$(browser)"
+      },
+      {
+        "command": "tabTree.hideWebViewTabs",
+        "title": "Hide WebView Tabs",
+        "icon": "$(window)"
       },
       {
         "command": "tabTree.closeTab",
@@ -242,19 +252,29 @@
           "group": "navigation@4"
         },
         {
-          "command": "tabTree.expandAll",
-          "when": "view == tabTree",
+          "command": "tabTree.hideWebViewTabs",
+          "when": "view == tabTree && tabTree.showWebViewTabs",
           "group": "navigation@5"
         },
         {
-          "command": "tabTree.collapseAll",
+          "command": "tabTree.showWebViewTabs",
+          "when": "view == tabTree && !tabTree.showWebViewTabs",
+          "group": "navigation@5"
+        },
+        {
+          "command": "tabTree.expandAll",
           "when": "view == tabTree",
           "group": "navigation@6"
         },
         {
-          "command": "tabTree.closeAll",
+          "command": "tabTree.collapseAll",
           "when": "view == tabTree",
           "group": "navigation@7"
+        },
+        {
+          "command": "tabTree.closeAll",
+          "when": "view == tabTree",
+          "group": "navigation@8"
         }
       ],
       "view/item/context": [
@@ -447,6 +467,11 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically reveal and select the active editor in the tree"
+        },
+        "tabTree.showWebViewTabs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show WebView tabs (Settings, Welcome, Preview, extension panels) in the tree. Turn off to hide them and see only files and diffs."
         }
       }
     }

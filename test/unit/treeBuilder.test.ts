@@ -23,8 +23,28 @@ function tab(filePath: string, overrides: Partial<ITabInfo> = {}): ITabInfo {
     };
 }
 
+function enrichTabs(tabs: ITabInfo[], workspaceRoots: string[]): ITabInfo[] {
+    return tabs.map((t) => {
+        if (t.workspaceFolderUri !== undefined) return t;
+        if (!['file', 'vscode-remote', 'vscode-vfs'].includes(t.scheme)) return t;
+        const owner = workspaceRoots.find(
+            (r) => t.filePath === r || t.filePath.startsWith(r + '/'),
+        );
+        if (!owner) return t;
+        const name = owner.split('/').filter(Boolean).pop() ?? owner;
+        const relative = t.filePath === owner ? '' : t.filePath.slice(owner.length + 1);
+        return {
+            ...t,
+            workspaceFolderUri: `file://${owner.startsWith('/') ? owner : '/' + owner}`,
+            workspaceFolderName: name,
+            workspaceFolderPath: owner,
+            relativePath: relative,
+        };
+    });
+}
+
 function input(tabs: ITabInfo[], workspaceRoots: string[] = ['/project'], tabGroupCount = 1): IBuildTreeInput {
-    return { tabs, workspaceRoots, tabGroupCount };
+    return { tabs: enrichTabs(tabs, workspaceRoots), tabGroupCount };
 }
 
 function findNode(nodes: ITreeNode[], path: string[]): ITreeNode | undefined {

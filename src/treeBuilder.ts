@@ -1,6 +1,7 @@
 /**
  * Pure tree-building logic. NO dependency on 'vscode' module.
- * Input: list of tab infos + workspace roots → Output: tree structure.
+ * Workspace ownership is read from ITabInfo (workspaceFolderUri/relativePath),
+ * pre-resolved by TabTracker via VS Code API. No path string matching here.
  */
 
 import {
@@ -16,7 +17,7 @@ function isFileScheme(tab: ITabInfo): boolean {
     return FILE_SCHEMES.has(tab.scheme);
 }
 
-function buildGroupTree(tabs: ITabInfo[], workspaceRoots: string[]): ITreeNode[] {
+function buildGroupTree(tabs: ITabInfo[]): ITreeNode[] {
     const result: ITreeNode[] = [];
 
     const nonFileTabs = tabs.filter((t) => !isFileScheme(t));
@@ -32,32 +33,45 @@ function buildGroupTree(tabs: ITabInfo[], workspaceRoots: string[]): ITreeNode[]
         });
     }
 
-    const sortedRoots = [...workspaceRoots].sort((a, b) => a.localeCompare(b));
+    const byWorkspace = new Map<string, ITabInfo[]>();
+    const externalTabs: ITabInfo[] = [];
 
-    for (const root of sortedRoots) {
-        const rootTabs = fileTabs.filter((t) => t.filePath.startsWith(root + '/') || t.filePath === root);
-        if (rootTabs.length === 0) continue;
+    for (const t of fileTabs) {
+        if (t.workspaceFolderUri === undefined) {
+            externalTabs.push(t);
+            continue;
+        }
+        const bucket = byWorkspace.get(t.workspaceFolderUri);
+        if (bucket) {
+            bucket.push(t);
+        } else {
+            byWorkspace.set(t.workspaceFolderUri, [t]);
+        }
+    }
 
-        const rootLabel = root.split('/').pop() ?? root;
+    const sortedWorkspaceUris = [...byWorkspace.keys()].sort((a, b) => {
+        const nameA = byWorkspace.get(a)![0].workspaceFolderName ?? a;
+        const nameB = byWorkspace.get(b)![0].workspaceFolderName ?? b;
+        return nameA.localeCompare(nameB);
+    });
+
+    for (const uri of sortedWorkspaceUris) {
+        const rootTabs = byWorkspace.get(uri)!;
+        const first = rootTabs[0];
         const rootNode: ITreeNode = {
             type: ETreeNodeType.WorkspaceRoot,
-            label: rootLabel,
-            path: root,
+            label: first.workspaceFolderName ?? uri,
+            path: first.workspaceFolderPath ?? '',
             children: [],
         };
 
         for (const t of rootTabs) {
-            const relativePath = t.filePath.slice(root.length + 1);
-            insertIntoTree(rootNode, relativePath, t);
+            insertIntoTree(rootNode, t);
         }
 
         sortTreeRecursive(rootNode);
         result.push(rootNode);
     }
-
-    const externalTabs = fileTabs.filter((t) => {
-        return !workspaceRoots.some((root) => t.filePath.startsWith(root + '/') || t.filePath === root);
-    });
 
     if (externalTabs.length > 0) {
         const externalNode: ITreeNode = {
@@ -84,8 +98,9 @@ function buildGroupTree(tabs: ITabInfo[], workspaceRoots: string[]): ITreeNode[]
     return result;
 }
 
-function insertIntoTree(parent: ITreeNode, relativePath: string, tab: ITabInfo): void {
-    const parts = relativePath.split('/');
+function insertIntoTree(parent: ITreeNode, tab: ITabInfo): void {
+    const relative = tab.relativePath ?? '';
+    const parts = relative.length > 0 ? relative.split('/') : [tab.filePath.split('/').pop() ?? tab.filePath];
 
     let current = parent;
     for (let i = 0; i < parts.length - 1; i++) {
@@ -135,7 +150,7 @@ function stampGroupIndex(nodes: ITreeNode[], groupIndex: number): void {
 }
 
 export function buildTree(input: IBuildTreeInput): ITreeNode[] {
-    const { tabs, workspaceRoots, tabGroupCount } = input;
+    const { tabs, tabGroupCount } = input;
 
     if (tabs.length === 0) {
         return [];
@@ -151,7 +166,7 @@ export function buildTree(input: IBuildTreeInput): ITreeNode[] {
             const groupTabs = tabs.filter((t) => t.groupIndex === groupIndex);
             if (groupTabs.length === 0) continue;
 
-            const children = buildGroupTree(groupTabs, workspaceRoots);
+            const children = buildGroupTree(groupTabs);
             stampGroupIndex(children, groupIndex);
 
             const groupNode: ITreeNode = {
@@ -167,7 +182,7 @@ export function buildTree(input: IBuildTreeInput): ITreeNode[] {
         return result;
     }
 
-    return buildGroupTree(tabs, workspaceRoots);
+    return buildGroupTree(tabs);
 }
 
 export function sortChildren(children: ITreeNode[]): ITreeNode[] {
@@ -184,11 +199,4 @@ export function sortChildren(children: ITreeNode[]): ITreeNode[] {
 
 export function isFileTab(tab: ITabInfo): boolean {
     return tab.scheme === 'file' && tab.tabType === 'text';
-}
-
-export function getWorkspaceRoot(
-    filePath: string,
-    workspaceRoots: string[],
-): string | undefined {
-    return workspaceRoots.find((root) => filePath.startsWith(root + '/'));
 }

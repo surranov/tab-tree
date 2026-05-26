@@ -165,6 +165,12 @@
   - [x] 5.4.1 On: single click → preview tab (replaced by next click)
   - [x] 5.4.2 Off: single click → file opens permanently
   - [x] 5.4.3 State persists (native VS Code setting)
+- [x] **5.6** Toggle: Show WebView Tabs — shows/hides WebView-backed tabs (Settings, Welcome, Preview, extension panels) in the tree
+  - [x] 5.6.1 On (default): all WebView tabs are visible in the non-file section of the tree
+  - [x] 5.6.2 Off: WebView tabs are filtered out — only files and diffs remain
+  - [x] 5.6.3 State persists (tabTree.showWebViewTabs, Global target)
+  - [x] 5.6.4 Visual state indicator: paired commands browser/window
+  - [x] 5.6.5 Other non-file tab types (Notebook, Custom, Diff) are always shown — only WebView is toggleable. Terminal remains excluded by design (7.6.7).
 
 ### 6. Git integration
 
@@ -187,7 +193,7 @@
   - [x] 7.6.2 Extension settings — same label-based match as 7.6.1 catches "Extension Settings" tabs
   - [x] 7.6.3 Keyboard Shortcuts — label match → `keyboard` icon
   - [x] 7.6.4 Welcome tab — label match ("welcome" / "get started") → `info` icon
-  - [x] 7.6.5 Webview tabs (extension UIs) — generic fallback icon `browser` for any `TabInputWebview` that doesn't match a specific label
+  - [x] 7.6.5 Webview tabs (extension UIs) — generic fallback icon `browser` for any `TabInputWebview` that doesn't match a specific label. Visibility is controlled by the `tabTree.showWebViewTabs` toggle (see 5.6); filter lives in `TabTracker.extractTabInfo` and returns `undefined` when the setting is off, which naturally excludes the tab from `buildTree`.
   - [x] 7.6.6 Diff editors — handled as file tabs via `TabInputTextDiff.modified` in `tabTracker.extractFilePath`; appear in the file tree with regular file icon, not in the non-file section. OQ-5 resolved in favor of this approach.
   - [x] 7.6.7 Terminals — excluded by design: `tabTracker.extractTabInfo` returns `undefined` for `tabType === 'terminal'`. Rationale: terminal tabs live in a separate panel logically; showing them in Tab Tree was considered confusing. → OQ-7 resolved as "excluded".
   - [x] 7.6.8 Output/Problems panels — not exposed as tabs in the VS Code `TabGroups` API (they're views, not editor tabs), so there is nothing to render.
@@ -242,6 +248,7 @@
 - [x] **12.1** `tabTree.followActiveFile` — boolean, default true
 - ~~**12.2** `tabTree.showPreviewTabs`~~ — removed. Was declared in package.json but never used. Implement from scratch if needed.
 - ~~**12.3** `tabTree.showNonFileTabs`~~ — removed. Same reason.
+- [x] **12.4** `tabTree.showWebViewTabs` — boolean, default true. When false, hides WebView-backed tabs (Settings, Welcome, Preview, extension panels). Other non-file tab types (Notebook, Custom, Diff) are unaffected. Persisted globally. Toggled via toolbar commands `tabTree.showWebViewTabs` / `tabTree.hideWebViewTabs` (5.6).
 
 ### 13. Corner cases for tree building
 

@@ -146,8 +146,8 @@ describe('tab close commands', () => {
 // ---------------------------------------------------------------------------
 
 describe('toggle Follow Active File', () => {
-    it('enableFollowActiveFile — updates setting to true + setContext', () => {
-        handlers.get('tabTree.enableFollowActiveFile')!();
+    it('enableFollowActiveFile — updates setting to true + setContext', async () => {
+        await handlers.get('tabTree.enableFollowActiveFile')!();
 
         const configMock = vscode.workspace.getConfiguration as ReturnType<typeof vi.fn>;
         expect(configMock).toHaveBeenCalledWith('tabTree');
@@ -157,8 +157,8 @@ describe('toggle Follow Active File', () => {
         );
     });
 
-    it('disableFollowActiveFile — updates setting to false + setContext', () => {
-        handlers.get('tabTree.disableFollowActiveFile')!();
+    it('disableFollowActiveFile — updates setting to false + setContext', async () => {
+        await handlers.get('tabTree.disableFollowActiveFile')!();
 
         expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
             'setContext', 'tabTree.followActiveFile', false,
@@ -171,8 +171,8 @@ describe('toggle Follow Active File', () => {
 // ---------------------------------------------------------------------------
 
 describe('toggle Preview', () => {
-    it('enablePreview — updates workbench.editor enablePreview to true + setContext', () => {
-        handlers.get('tabTree.enablePreview')!();
+    it('enablePreview — updates workbench.editor enablePreview to true + setContext', async () => {
+        await handlers.get('tabTree.enablePreview')!();
 
         const configMock = vscode.workspace.getConfiguration as ReturnType<typeof vi.fn>;
         expect(configMock).toHaveBeenCalledWith('workbench.editor');
@@ -182,11 +182,46 @@ describe('toggle Preview', () => {
         );
     });
 
-    it('disablePreview — updates workbench.editor enablePreview to false + setContext', () => {
-        handlers.get('tabTree.disablePreview')!();
+    it('disablePreview — updates workbench.editor enablePreview to false + setContext', async () => {
+        await handlers.get('tabTree.disablePreview')!();
 
         expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
             'setContext', 'tabTree.previewEnabled', false,
+        );
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Toggle: Show WebView Tabs
+// ---------------------------------------------------------------------------
+
+describe('toggle Show WebView Tabs', () => {
+    it('showWebViewTabs — updates setting to true + setContext', async () => {
+        await handlers.get('tabTree.showWebViewTabs')!();
+
+        const configMock = vscode.workspace.getConfiguration as ReturnType<typeof vi.fn>;
+        expect(configMock).toHaveBeenCalledWith('tabTree');
+
+        expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+            'setContext', 'tabTree.showWebViewTabs', true,
+        );
+    });
+
+    it('hideWebViewTabs — updates setting to false + setContext', async () => {
+        await handlers.get('tabTree.hideWebViewTabs')!();
+
+        expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+            'setContext', 'tabTree.showWebViewTabs', false,
+        );
+    });
+
+    it('config change for tabTree.showWebViewTabs — re-syncs title button context', () => {
+        vscode.__test.setConfigValue('tabTree.showWebViewTabs', false);
+
+        vscode.__test.fireConfigChanged('tabTree.showWebViewTabs');
+
+        expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+            'setContext', 'tabTree.showWebViewTabs', false,
         );
     });
 });
@@ -275,6 +310,36 @@ describe('copy commands', () => {
         handlers.get('tabTree.copyRelativePath')!(node);
 
         expect(vscode.env.clipboard.writeText).toHaveBeenCalledWith('/tmp/scratch.ts');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Windows paths — workspace root with backslashes (issue #12)
+// ---------------------------------------------------------------------------
+
+describe('Windows paths — copyRelativePath и findInFolder', () => {
+    beforeEach(() => {
+        vscode.__test.reset();
+        vscode.__test.setWorkspaceFolders(['C:\\Users\\project']);
+        activate(mockContext() as any);
+        handlers = getHandlers();
+    });
+
+    it('copyRelativePath — workspace root с backslash → relative path вычислен корректно', () => {
+        const node = fileNode('C:/Users/project/src/index.ts');
+        handlers.get('tabTree.copyRelativePath')!(node);
+
+        expect(vscode.env.clipboard.writeText).toHaveBeenCalledWith('src/index.ts');
+    });
+
+    it('findInFolder — workspace root с backslash → filesToInclude относительный', () => {
+        const node = fileNode('C:/Users/project/src/index.ts');
+        handlers.get('tabTree.findInFolder')!(node);
+
+        expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+            'workbench.action.findInFiles',
+            expect.objectContaining({ filesToInclude: 'src/**' }),
+        );
     });
 });
 

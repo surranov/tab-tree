@@ -25,6 +25,10 @@ export interface ITabInfo {
     isPinned: boolean;
     isActive: boolean;
     tabType: TTabType;
+    workspaceFolderUri?: string;
+    workspaceFolderName?: string;
+    workspaceFolderPath?: string;
+    relativePath?: string;
 }
 
 export interface ITreeNode {
@@ -38,6 +42,5 @@ export interface ITreeNode {
 
 export interface IBuildTreeInput {
     tabs: ITabInfo[];
-    workspaceRoots: string[];
     tabGroupCount: number;
 }

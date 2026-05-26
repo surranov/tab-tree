@@ -4,12 +4,15 @@
 
 import * as vscode from 'vscode';
 import { ITabInfo, TTabType } from './types';
+import { normalizePath } from './treeUtils';
+import { getWorkspaceLocation } from './workspaceLocation';
 
 const DEBOUNCE_MS = 80;
 
 export class TabTracker implements vscode.Disposable {
     private readonly disposables: vscode.Disposable[] = [];
     private debounceTimer: ReturnType<typeof setTimeout> | undefined;
+    private suspended = false;
 
     private readonly _onDidChange = new vscode.EventEmitter<void>();
     readonly onDidChange = this._onDidChange.event;
@@ -23,7 +26,31 @@ export class TabTracker implements vscode.Disposable {
         );
     }
 
+    suspendUpdates(): void {
+        this.suspended = true;
+        if (this.debounceTimer !== undefined) {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = undefined;
+        }
+    }
+
+    resumeUpdates(): void {
+        this.suspended = false;
+        this._onDidChange.fire();
+    }
+
+    refresh(): void {
+        if (this.debounceTimer !== undefined) {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = undefined;
+        }
+        if (!this.suspended) {
+            this._onDidChange.fire();
+        }
+    }
+
     private scheduleUpdate(): void {
+        if (this.suspended) return;
         if (this.debounceTimer !== undefined) {
             clearTimeout(this.debounceTimer);
         }
@@ -62,13 +89,18 @@ export class TabTracker implements vscode.Disposable {
 
     private extractTabInfo(tab: vscode.Tab, group: vscode.TabGroup, tabIndex: number): ITabInfo | undefined {
         const tabType = this.getTabType(tab);
+        const filePath = this.extractFilePath(tab);
 
         if (tabType === 'terminal') {
             return undefined;
         }
 
-        const filePath = this.extractFilePath(tab);
+        if (this.shouldHideUriLessNonFileTab(tabType, filePath)) {
+            return undefined;
+        }
+
         const scheme = this.extractScheme(tab);
+        const location = filePath !== undefined ? getWorkspaceLocation(filePath) : undefined;
 
         return {
             filePath: filePath ?? tab.label,
@@ -81,6 +113,10 @@ export class TabTracker implements vscode.Disposable {
             isPinned: tab.isPinned,
             isActive: tab.isActive,
             tabType,
+            workspaceFolderUri: location?.folder.uri.toString(),
+            workspaceFolderName: location?.folder.name,
+            workspaceFolderPath: location ? normalizePath(location.folder.uri.fsPath) : undefined,
+            relativePath: location?.relative,
         };
     }
 
@@ -88,19 +124,19 @@ export class TabTracker implements vscode.Disposable {
         const input = tab.input;
 
         if (input instanceof vscode.TabInputText) {
-            return input.uri.fsPath;
+            return normalizePath(input.uri.fsPath);
         }
         if (input instanceof vscode.TabInputCustom) {
-            return input.uri.fsPath;
+            return normalizePath(input.uri.fsPath);
         }
         if (input instanceof vscode.TabInputNotebook) {
-            return input.uri.fsPath;
+            return normalizePath(input.uri.fsPath);
         }
         if (input instanceof vscode.TabInputTextDiff) {
-            return input.modified.fsPath;
+            return normalizePath(input.modified.fsPath);
         }
         if (input instanceof vscode.TabInputNotebookDiff) {
-            return input.modified.fsPath;
+            return normalizePath(input.modified.fsPath);
         }
 
         return undefined;
@@ -132,6 +168,14 @@ export class TabTracker implements vscode.Disposable {
         }
 
         return undefined;
+    }
+
+    private isWebViewVisible(): boolean {
+        return vscode.workspace.getConfiguration('tabTree').get<boolean>('showWebViewTabs', true);
+    }
+
+    private shouldHideUriLessNonFileTab(tabType: TTabType, filePath: string | undefined): boolean {
+        return !this.isWebViewVisible() && filePath === undefined && tabType !== 'terminal';
     }
 
     private getTabType(tab: vscode.Tab): TTabType {

@@ -3,7 +3,8 @@ import { execFile } from 'child_process';
 import { ITreeNode } from './types';
 import { TabTracker } from './tabTracker';
 import { TabTreeDataProvider, TabTreeDragAndDropController } from './treeDataProvider';
-import { getDir, collectFilePaths } from './treeUtils';
+import { getDir, collectFilePaths, normalizePath } from './treeUtils';
+import { getWorkspaceLocation } from './workspaceLocation';
 import { THIRD_PARTY_COMMANDS, computeContextKeyUpdates } from './thirdPartyCommands';
 
 async function updateThirdPartyContextKeys(): Promise<void> {
@@ -61,25 +62,10 @@ function getGitChangedFiles(cwd: string, staged: boolean): Promise<string[]> {
                 return;
             }
             const files = stdout.trim().split('\n').filter(Boolean);
-            resolve(files.map((f) => cwd + '/' + f));
+            const normalizedCwd = normalizePath(cwd);
+            resolve(files.map((f) => normalizedCwd + '/' + f));
         });
     });
-}
-
-async function openGitChanges(staged: boolean): Promise<void> {
-    const folders = vscode.workspace.workspaceFolders;
-    if (!folders) return;
-
-    const allFiles: string[] = [];
-    for (const folder of folders) {
-        const files = await getGitChangedFiles(folder.uri.fsPath, staged);
-        allFiles.push(...files);
-    }
-
-    for (const filePath of allFiles) {
-        const uri = vscode.Uri.file(filePath);
-        await vscode.commands.executeCommand('vscode.open', uri, { preview: false });
-    }
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -97,19 +83,37 @@ export function activate(context: vscode.ExtensionContext): void {
             canSelectMany: true,
         });
 
-        const followEnabled = vscode.workspace.getConfiguration('tabTree').get<boolean>('followActiveFile', true);
-        vscode.commands.executeCommand('setContext', 'tabTree.followActiveFile', followEnabled);
+        async function syncToggleContextKeys(): Promise<void> {
+            const followEnabled = vscode.workspace.getConfiguration('tabTree').get<boolean>('followActiveFile', true);
+            const previewEnabled = vscode.workspace.getConfiguration('workbench.editor').get<boolean>('enablePreview', true);
+            const showWebViewTabs = vscode.workspace.getConfiguration('tabTree').get<boolean>('showWebViewTabs', true);
 
-        const previewEnabled = vscode.workspace.getConfiguration('workbench.editor').get<boolean>('enablePreview', true);
-        vscode.commands.executeCommand('setContext', 'tabTree.previewEnabled', previewEnabled);
+            await Promise.all([
+                vscode.commands.executeCommand('setContext', 'tabTree.followActiveFile', followEnabled),
+                vscode.commands.executeCommand('setContext', 'tabTree.previewEnabled', previewEnabled),
+                vscode.commands.executeCommand('setContext', 'tabTree.showWebViewTabs', showWebViewTabs),
+            ]);
+        }
+
+        void syncToggleContextKeys();
 
         updateThirdPartyContextKeys();
 
         let selectedForCompare: vscode.Uri | undefined;
 
         let revealTimer: ReturnType<typeof setTimeout> | undefined;
+        let revealSuspended = false;
+        // Tab close → VS Code auto-activates a sibling. That auto-activation is not
+        // user intent, so we drop exactly the next scheduled reveal after a close.
+        let suppressNextReveal = false;
 
         function revealActiveFile(): void {
+            if (revealSuspended) return;
+            if (suppressNextReveal) {
+                suppressNextReveal = false;
+                return;
+            }
+
             const config = vscode.workspace.getConfiguration('tabTree');
             if (!config.get<boolean>('followActiveFile', true)) return;
 
@@ -119,16 +123,13 @@ export function activate(context: vscode.ExtensionContext): void {
             const node = treeDataProvider.findNodeByPath(activePath);
             if (!node) return;
 
-            // reveal() is best-effort: if a refresh invalidates the handle
-            // between our lookup and VS Code's async resolution, the promise
-            // rejects with "Cannot resolve tree item for element". That is
-            // benign — the next scheduleReveal will retry with a fresh node.
             Promise.resolve(
                 treeView.reveal(node, { select: true, focus: false, expand: true }),
             ).catch(() => { /* swallow race-induced rejection */ });
         }
 
         function scheduleReveal(): void {
+            if (revealSuspended) return;
             if (revealTimer !== undefined) {
                 clearTimeout(revealTimer);
             }
@@ -138,6 +139,29 @@ export function activate(context: vscode.ExtensionContext): void {
             }, 150);
         }
 
+        async function openGitChanges(staged: boolean): Promise<void> {
+            const folders = vscode.workspace.workspaceFolders;
+            if (!folders) return;
+
+            const allFiles: string[] = [];
+            for (const folder of folders) {
+                const files = await getGitChangedFiles(folder.uri.fsPath, staged);
+                allFiles.push(...files);
+            }
+            if (allFiles.length === 0) return;
+
+            tabTracker.suspendUpdates();
+            revealSuspended = true;
+            try {
+                await Promise.all(allFiles.map((filePath) =>
+                    vscode.commands.executeCommand('vscode.open', vscode.Uri.file(filePath), { preview: false }),
+                ));
+            } finally {
+                revealSuspended = false;
+                tabTracker.resumeUpdates();
+            }
+        }
+
         context.subscriptions.push(
             tabTracker,
             treeDataProvider,
@@ -145,7 +169,21 @@ export function activate(context: vscode.ExtensionContext): void {
             dragAndDropController,
 
             vscode.window.onDidChangeActiveTextEditor(() => scheduleReveal()),
-            vscode.window.tabGroups.onDidChangeTabs(() => scheduleReveal()),
+            vscode.window.tabGroups.onDidChangeTabs((e) => {
+                if (e.closed.length > 0) {
+                    suppressNextReveal = true;
+                }
+                scheduleReveal();
+            }),
+            vscode.workspace.onDidChangeConfiguration((e) => {
+                if (
+                    e.affectsConfiguration('tabTree.followActiveFile') ||
+                    e.affectsConfiguration('workbench.editor.enablePreview') ||
+                    e.affectsConfiguration('tabTree.showWebViewTabs')
+                ) {
+                    void syncToggleContextKeys();
+                }
+            }),
 
             vscode.commands.registerCommand('tabTree.focusTab', async (groupIndex: number, tabIndex: number) => {
                 const groups = vscode.window.tabGroups.all;
@@ -205,24 +243,36 @@ export function activate(context: vscode.ExtensionContext): void {
 
             treeView.onDidExpandElement((e) => treeDataProvider.handleDidExpand(e.element)),
 
-            vscode.commands.registerCommand('tabTree.enableFollowActiveFile', () => {
-                vscode.workspace.getConfiguration('tabTree').update('followActiveFile', true, vscode.ConfigurationTarget.Global);
-                vscode.commands.executeCommand('setContext', 'tabTree.followActiveFile', true);
+            vscode.commands.registerCommand('tabTree.enableFollowActiveFile', async () => {
+                await vscode.workspace.getConfiguration('tabTree').update('followActiveFile', true, vscode.ConfigurationTarget.Global);
+                await vscode.commands.executeCommand('setContext', 'tabTree.followActiveFile', true);
             }),
 
-            vscode.commands.registerCommand('tabTree.disableFollowActiveFile', () => {
-                vscode.workspace.getConfiguration('tabTree').update('followActiveFile', false, vscode.ConfigurationTarget.Global);
-                vscode.commands.executeCommand('setContext', 'tabTree.followActiveFile', false);
+            vscode.commands.registerCommand('tabTree.disableFollowActiveFile', async () => {
+                await vscode.workspace.getConfiguration('tabTree').update('followActiveFile', false, vscode.ConfigurationTarget.Global);
+                await vscode.commands.executeCommand('setContext', 'tabTree.followActiveFile', false);
             }),
 
-            vscode.commands.registerCommand('tabTree.enablePreview', () => {
-                vscode.workspace.getConfiguration('workbench.editor').update('enablePreview', true, vscode.ConfigurationTarget.Global);
-                vscode.commands.executeCommand('setContext', 'tabTree.previewEnabled', true);
+            vscode.commands.registerCommand('tabTree.enablePreview', async () => {
+                await vscode.workspace.getConfiguration('workbench.editor').update('enablePreview', true, vscode.ConfigurationTarget.Global);
+                await vscode.commands.executeCommand('setContext', 'tabTree.previewEnabled', true);
             }),
 
-            vscode.commands.registerCommand('tabTree.disablePreview', () => {
-                vscode.workspace.getConfiguration('workbench.editor').update('enablePreview', false, vscode.ConfigurationTarget.Global);
-                vscode.commands.executeCommand('setContext', 'tabTree.previewEnabled', false);
+            vscode.commands.registerCommand('tabTree.disablePreview', async () => {
+                await vscode.workspace.getConfiguration('workbench.editor').update('enablePreview', false, vscode.ConfigurationTarget.Global);
+                await vscode.commands.executeCommand('setContext', 'tabTree.previewEnabled', false);
+            }),
+
+            vscode.commands.registerCommand('tabTree.showWebViewTabs', async () => {
+                await vscode.workspace.getConfiguration('tabTree').update('showWebViewTabs', true, vscode.ConfigurationTarget.Global);
+                await vscode.commands.executeCommand('setContext', 'tabTree.showWebViewTabs', true);
+                tabTracker.refresh();
+            }),
+
+            vscode.commands.registerCommand('tabTree.hideWebViewTabs', async () => {
+                await vscode.workspace.getConfiguration('tabTree').update('showWebViewTabs', false, vscode.ConfigurationTarget.Global);
+                await vscode.commands.executeCommand('setContext', 'tabTree.showWebViewTabs', false);
+                tabTracker.refresh();
             }),
 
             vscode.commands.registerCommand('tabTree.openToSide', (node: ITreeNode) => {
@@ -257,12 +307,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
             vscode.commands.registerCommand('tabTree.copyRelativePath', (node: ITreeNode) => {
                 if (!node?.path) return;
-                const root = (vscode.workspace.workspaceFolders ?? [])
-                    .map((f) => f.uri.fsPath)
-                    .find((r) => node.path.startsWith(r + '/'));
-                const relative = root
-                    ? node.path.slice(root.length + 1)
-                    : node.path;
+                const relative = getWorkspaceLocation(node.path)?.relative || node.path;
                 vscode.env.clipboard.writeText(relative);
             }),
 
@@ -292,10 +337,7 @@ export function activate(context: vscode.ExtensionContext): void {
             vscode.commands.registerCommand('tabTree.findInFolder', (node: ITreeNode) => {
                 if (!node?.path) return;
                 const dir = getDir(node);
-                const root = (vscode.workspace.workspaceFolders ?? [])
-                    .map((f) => f.uri.fsPath)
-                    .find((r) => dir.startsWith(r + '/'));
-                const relative = root ? dir.slice(root.length + 1) : dir;
+                const relative = getWorkspaceLocation(dir)?.relative || dir;
                 vscode.commands.executeCommand('workbench.action.findInFiles', {
                     filesToInclude: relative + '/**',
                     triggerSearch: false,

@@ -30,7 +30,7 @@ VS Code's built-in "Open Editors" is a flat list. Once you have 10+ tabs, findin
 - **Split editor support** — separate sections per editor group (Group 1, Group 2, ...)
 - **Follow active file** — auto-reveals the currently focused file in the tree
 - **Full context menu** — Close, Open to Side, Rename, Move, Delete, Copy Path, New File/Folder, Find in Folder, Reveal in OS, Git Stage/Unstage/Discard/View History, Select for Compare
-- **Toolbar buttons** — Collapse/Expand All, Close All, Follow toggle, Preview toggle, Open Git Changes
+- **Toolbar buttons** — Collapse/Expand All, Close All, Follow toggle, Preview toggle, WebView toggle, Open Git Changes
 - **Non-file tabs** — Settings, Keyboard Shortcuts, and other webview tabs appear in the tree
 - **Drag and drop** — drag files between editor groups to move tabs (not copy)
 - **Multi-root workspaces** — each workspace folder gets its own root node
@@ -53,9 +53,10 @@ code --install-extension surranov.tab-tree
 
 ## Settings
 
-| Setting                    | Default | Description                                |
-| -------------------------- | ------- | ------------------------------------------ |
-| `tabTree.followActiveFile` | `true`  | Auto-reveal the active editor in the tree  |
+| Setting                    | Default | Description                                                                        |
+| -------------------------- | ------- | ---------------------------------------------------------------------------------- |
+| `tabTree.followActiveFile` | `true`  | Auto-reveal the active editor in the tree                                          |
+| `tabTree.showWebViewTabs`  | `true`  | Show WebView tabs (Settings, Welcome, Preview, extension panels) in the tree       |
 
 ## Requirements
 
@@ -76,7 +77,7 @@ npm run build
 
 ```bash
 npm run watch          # rebuild on file changes
-npm run test:unit      # vitest — 276 unit tests
+npm run test:unit      # vitest — 290 unit tests
 npm run test:integration  # @vscode/test-electron — 59 integration tests
 npm run check          # typecheck + lint + unit tests
 ```

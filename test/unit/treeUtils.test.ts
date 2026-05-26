@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getDir, collectFilePaths, getNodeId, getNonFileTabIconId } from '../../src/treeUtils';
+import { getDir, collectFilePaths, getNodeId, getNonFileTabIconId, normalizePath } from '../../src/treeUtils';
 import { ETreeNodeType, ITreeNode } from '../../src/types';
 
 // ---------------------------------------------------------------------------
@@ -362,5 +362,31 @@ describe('getNonFileTabIconId — 7.4', () => {
 
     it('completely unknown tab → browser fallback', () => {
         expect(getNonFileTabIconId(nft('Something Else'))).toBe('browser');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// normalizePath — Windows backslash fix
+// ---------------------------------------------------------------------------
+
+describe('normalizePath', () => {
+    it('пустая строка → пустая строка', () => {
+        expect(normalizePath('')).toBe('');
+    });
+
+    it('путь без слэшей → без изменений', () => {
+        expect(normalizePath('file.ts')).toBe('file.ts');
+    });
+
+    it('прямые слэши → без изменений', () => {
+        expect(normalizePath('/home/user/project/file.ts')).toBe('/home/user/project/file.ts');
+    });
+
+    it('обратные слэши → заменяются на прямые', () => {
+        expect(normalizePath('C:\\Users\\project\\file.ts')).toBe('C:/Users/project/file.ts');
+    });
+
+    it('смешанные слэши → все заменяются на прямые', () => {
+        expect(normalizePath('C:\\mixed/path\\file.ts')).toBe('C:/mixed/path/file.ts');
     });
 });

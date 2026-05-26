@@ -96,7 +96,7 @@ npm update <package1> <package2> ...
 Then run the full check cycle:
 
 ```bash
-npm run check          # typecheck + lint + unit tests (276+ tests)
+npm run check          # typecheck + lint + unit tests (290+ tests)
 npm run test:integration   # full @vscode/test-electron integration suite
 npm run build:prod     # production bundle
 npm run package        # vsce package (smoke test that .vsix builds)
