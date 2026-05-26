@@ -46,7 +46,7 @@ describe('follow active file — revealActiveFile + scheduleReveal', () => {
         vi.useRealTimers();
     });
 
-    it('on active editor change — file is revealed in treeView after debounce', () => {
+    it('active editor change — file is revealed after debounce with select:true', () => {
         vscode.__test.setTabGroups([
             {
                 viewColumn: 1,
@@ -59,28 +59,17 @@ describe('follow active file — revealActiveFile + scheduleReveal', () => {
         activate(mockContext() as any);
 
         const treeViewMock = vscode.window.createTreeView.mock.results[0]?.value;
-        expect(treeViewMock).toBeDefined();
-
-        // onDidChangeActiveTextEditor calls scheduleReveal
         const activeEditorCb = (vscode.window.onDidChangeActiveTextEditor as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-        expect(activeEditorCb).toBeDefined();
 
-        // Wait for initial TabTracker debounce (80ms) + refresh
         vi.advanceTimersByTime(80);
-
-        // Clear reveal to not count the initial one
         treeViewMock.reveal.mockClear();
 
-        // Active editor change fires
         activeEditorCb();
 
-        // 150ms hasn't passed — reveal should not be called
         vi.advanceTimersByTime(100);
         expect(treeViewMock.reveal).not.toHaveBeenCalled();
 
-        // Advance to 150ms
         vi.advanceTimersByTime(50);
-
         expect(treeViewMock.reveal).toHaveBeenCalledOnce();
         expect(treeViewMock.reveal).toHaveBeenCalledWith(
             expect.objectContaining({ path: '/project/src/index.ts' }),
@@ -106,18 +95,15 @@ describe('follow active file — revealActiveFile + scheduleReveal', () => {
         vi.advanceTimersByTime(80);
         treeViewMock.reveal.mockClear();
 
-        // 3 rapid changes
         activeEditorCb();
         vi.advanceTimersByTime(50);
         activeEditorCb();
         vi.advanceTimersByTime(50);
         activeEditorCb();
 
-        // 150ms hasn't passed since last call
         vi.advanceTimersByTime(100);
         expect(treeViewMock.reveal).not.toHaveBeenCalled();
 
-        // Advance to 150ms from the last call
         vi.advanceTimersByTime(50);
         expect(treeViewMock.reveal).toHaveBeenCalledOnce();
     });
@@ -169,6 +155,67 @@ describe('follow active file — revealActiveFile + scheduleReveal', () => {
         vi.advanceTimersByTime(200);
 
         expect(treeViewMock.reveal).not.toHaveBeenCalled();
+    });
+
+    it('close event suppresses exactly the next scheduled reveal (one-shot)', () => {
+        vscode.__test.setTabGroups([
+            {
+                viewColumn: 1,
+                isActive: true,
+                tabs: [mockTab('/project/src/a.ts', 1, true)],
+                activeTab: mockTab('/project/src/a.ts', 1, true),
+            },
+        ]);
+
+        activate(mockContext() as any);
+
+        const treeViewMock = vscode.window.createTreeView.mock.results[0]?.value;
+        const activeEditorCb = (vscode.window.onDidChangeActiveTextEditor as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+
+        vi.advanceTimersByTime(80);
+        treeViewMock.reveal.mockClear();
+
+        // Close event arrives — tab closed, auto-activation shouldn't scroll
+        const closedTab = mockTab('/project/src/old.ts', 1, false);
+        vscode.__test.fireTabsChanged({ opened: [], closed: [closedTab], changed: [] });
+
+        // Active editor change fires right after close (auto-activation)
+        activeEditorCb();
+        vi.advanceTimersByTime(150);
+
+        expect(treeViewMock.reveal).not.toHaveBeenCalled();
+    });
+
+    it('after suppressed reveal — следующее переключение редактора снова открывает reveal', () => {
+        vscode.__test.setTabGroups([
+            {
+                viewColumn: 1,
+                isActive: true,
+                tabs: [mockTab('/project/src/a.ts', 1, true)],
+                activeTab: mockTab('/project/src/a.ts', 1, true),
+            },
+        ]);
+
+        activate(mockContext() as any);
+
+        const treeViewMock = vscode.window.createTreeView.mock.results[0]?.value;
+        const activeEditorCb = (vscode.window.onDidChangeActiveTextEditor as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+
+        vi.advanceTimersByTime(80);
+        treeViewMock.reveal.mockClear();
+
+        const closedTab = mockTab('/project/src/old.ts', 1, false);
+        vscode.__test.fireTabsChanged({ opened: [], closed: [closedTab], changed: [] });
+
+        // Первый scheduled reveal после close — должен быть подавлен
+        vi.advanceTimersByTime(200);
+        expect(treeViewMock.reveal).not.toHaveBeenCalled();
+        treeViewMock.reveal.mockClear();
+
+        // Следующее переключение редактора — reveal должен сработать
+        activeEditorCb();
+        vi.advanceTimersByTime(200);
+        expect(treeViewMock.reveal).toHaveBeenCalledOnce();
     });
 
     it('file not found in tree — reveal not called, no crash', () => {

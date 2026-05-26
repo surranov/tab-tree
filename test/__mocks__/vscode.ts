@@ -50,6 +50,11 @@ export class Uri {
     }
 
     toString(): string {
+        if (this.scheme === 'file') {
+            const normalized = this.fsPath.replace(/\\/g, '/');
+            const withLeadingSlash = normalized.startsWith('/') ? normalized : '/' + normalized;
+            return `file://${withLeadingSlash}`;
+        }
         return `${this.scheme}://${this.fsPath}`;
     }
 }
@@ -285,7 +290,18 @@ export const workspace = {
             },
         };
     },
-    workspaceFolders: undefined as { uri: Uri }[] | undefined,
+    workspaceFolders: undefined as { uri: Uri; name: string; index: number }[] | undefined,
+    getWorkspaceFolder: vi.fn().mockImplementation((uri: Uri) => {
+        const folders = workspace.workspaceFolders ?? [];
+        const target = uri.fsPath.replace(/\\/g, '/');
+        for (const folder of folders) {
+            const root = folder.uri.fsPath.replace(/\\/g, '/');
+            if (target === root || target.startsWith(root + '/')) {
+                return folder;
+            }
+        }
+        return undefined;
+    }),
     applyEdit: vi.fn().mockResolvedValue(true),
     fs: {
         rename: vi.fn().mockResolvedValue(undefined),
@@ -353,7 +369,11 @@ export const __test = {
     },
 
     setWorkspaceFolders(paths: string[]): void {
-        workspace.workspaceFolders = paths.map((p) => ({ uri: Uri.file(p) }));
+        workspace.workspaceFolders = paths.map((p, index) => {
+            const uri = Uri.file(p);
+            const name = p.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? p;
+            return { uri, name, index };
+        });
     },
 
     setAvailableCommands(ids: string[]): void {
@@ -382,6 +402,7 @@ export const __test = {
         window.showOpenDialog.mockClear();
         window.createTerminal.mockClear();
         workspace.getConfiguration.mockClear();
+        workspace.getWorkspaceFolder.mockClear();
         workspace.applyEdit.mockClear();
         workspace.workspaceFolders = undefined;
         workspace.fs.rename.mockClear();

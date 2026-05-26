@@ -5,6 +5,10 @@
 
 import { ETreeNodeType, ITreeNode } from './types';
 
+export function normalizePath(p: string): string {
+    return p.replace(/\\/g, '/');
+}
+
 export function getDir(node: ITreeNode): string {
     return node.type === ETreeNodeType.File
         ? node.path.slice(0, node.path.lastIndexOf('/'))

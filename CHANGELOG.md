@@ -7,6 +7,17 @@ All notable changes to Tab Tree will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.7] - 2026-05-26
+
+### Added
+
+- Toolbar toggle "Show/Hide WebView Tabs" — controls visibility of WebView-backed tabs (Settings, Welcome, Preview, extension panels). Default on; state persists via `tabTree.showWebViewTabs` (Global). Other non-file types (Notebook, Custom, Diff) and files remain unaffected.
+
+### Fixed
+
+- **Windows: all open files showed up under "External Files"** ([#12](https://github.com/surranov/tab-tree/issues/12)). Tab → workspace ownership is now resolved through the VS Code API (`workspace.getWorkspaceFolder`) instead of ad-hoc `startsWith` on `fsPath`, so backslash-vs-forward-slash, drive-letter case, UNC, and remote/virtual workspaces all work correctly.
+- Scroll-jump after closing a tab: closing a tab no longer auto-scrolls the tree to the newly-activated tab. The previous 400 ms time window was replaced with a one-shot flag that drops exactly the next reveal triggered by VS Code's auto-activation. Active-editor-change events still drive reveal + select as before.
+
 ## [0.0.6] - 2026-04-16
 
 ### Removed

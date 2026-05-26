@@ -609,3 +609,44 @@ describe('findNodeByPath', () => {
         expect(found!.path).toBe('/project/src/deep/nested/file.ts');
     });
 });
+
+// ---------------------------------------------------------------------------
+// Windows paths — backslash normalization (issue #12)
+// ---------------------------------------------------------------------------
+
+describe('Windows paths — файлы не попадают в External Files', () => {
+    beforeEach(() => {
+        vscode.__test.reset();
+    });
+
+    it('workspace root и файл с Windows-путями → файл в WorkspaceRoot, не в External Files', () => {
+        vscode.__test.setWorkspaceFolders(['C:\\Users\\project']);
+        vscode.__test.setTabGroups([
+            {
+                viewColumn: 1,
+                isActive: true,
+                tabs: [
+                    {
+                        input: new vscode.TabInputText(vscode.Uri.file('C:\\Users\\project\\src\\file.ts')),
+                        label: 'file.ts',
+                        group: { viewColumn: 1 },
+                        isDirty: false,
+                        isPreview: false,
+                        isPinned: false,
+                        isActive: true,
+                    },
+                ],
+            },
+        ]);
+
+        const provider = makeProvider();
+        const roots = provider.getChildren();
+
+        const externalRoot = roots.find((n) => n.type === ETreeNodeType.ExternalRoot);
+        const workspaceRoot = roots.find((n) => n.type === ETreeNodeType.WorkspaceRoot);
+
+        expect(externalRoot).toBeUndefined();
+        expect(workspaceRoot).toBeDefined();
+        expect(workspaceRoot!.label).toBe('project');
+    });
+});

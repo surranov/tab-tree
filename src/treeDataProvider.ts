@@ -8,6 +8,7 @@ import { ETreeNodeType, ITreeNode } from './types';
 import { buildTree } from './treeBuilder';
 import { TabTracker } from './tabTracker';
 import { getNodeId, getNonFileTabIconId } from './treeUtils';
+import { getWorkspaceLocation } from './workspaceLocation';
 
 export class TabTreeDataProvider implements vscode.TreeDataProvider<ITreeNode>, vscode.Disposable {
     private readonly disposables: vscode.Disposable[] = [];
@@ -34,12 +35,9 @@ export class TabTreeDataProvider implements vscode.TreeDataProvider<ITreeNode>, 
     private refresh(): void {
         try {
             const tabs = this.tabTracker.getTabs();
-            const workspaceRoots = (vscode.workspace.workspaceFolders ?? []).map(
-                (f) => f.uri.fsPath,
-            );
             const tabGroupCount = this.tabTracker.getTabGroupCount();
 
-            this.tree = buildTree({ tabs, workspaceRoots, tabGroupCount });
+            this.tree = buildTree({ tabs, tabGroupCount });
             this._onDidChangeTreeData.fire();
         } catch (err) {
             console.error('[Tab Tree] refresh FAILED:', err);
@@ -214,11 +212,7 @@ export class TabTreeDragAndDropController implements vscode.TreeDragAndDropContr
         const uriList = filePaths.map((p) => vscode.Uri.file(p).toString()).join('\r\n');
         dataTransfer.set('text/uri-list', new vscode.DataTransferItem(uriList));
 
-        const workspaceRoots = (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath);
-        const relativePaths = filePaths.map((p) => {
-            const root = workspaceRoots.find((r) => p.startsWith(r + '/'));
-            return root ? p.slice(root.length + 1) : p;
-        });
+        const relativePaths = filePaths.map((p) => getWorkspaceLocation(p)?.relative || p);
         dataTransfer.set('text/plain', new vscode.DataTransferItem(relativePaths.join('\n')));
     }
 
